@@ -97,7 +97,7 @@ README.md
 | 1 | `01_build_gene_table.py` | Builds the ORF-level spine from the Prodigal GFF and attaches VIBRANT's annotation columns (KO, Pfam, VOG, AMG flag), indexed by position rather than concatenated into a single string. |
 | 2 | `02_add_evidence.py` | Adds DefenseFinder and PADLOC results as evidence columns. No gene is classified here: each tool keeps its own opinion in its own columns. PADLOC hits are filtered with PADLOC's own per-profile thresholds, read from `hmm_meta.txt`. Also flags whether each hit belongs to a complete multi-gene system. |
 | 3 | `03_kegg_categories.py` | Builds the KO → KEGG pathway category lookup used to classify AVGs. |
-| 4 | `04_score_context.py` | Computes a DRAM-v style auxiliary score from the genomic context (viral hallmark genes within ±10 ORFs), applied to every ORF so that AVGs and defence genes are held to the same criterion. |
+| 4 | `04_score_context.py` | Computes a genomic-context auxiliary score (viral hallmark genes within ±10 ORFs), applied to every ORF so that AVGs and defence genes are held to the same criterion. The scoring criterion and its retention threshold follow DRAM-v (Shaffer et al. 2020); DRAM-v itself was not run, and the score is computed here directly from the ORF table, which avoids a large external reference database for what is a positional rule. |
 | 5 | `05_classify.py` | The single classification decision, under one declared precedence (see below). Produces `gene_class`, `class_source` and the raw category label. |
 | 6 | `06_harmonise_categories.py` | Resolves each raw label to one of six mechanistic categories, trying the PADLOC system name, then the profile's protein name, then the label itself. Writes `06_category_map.tsv`, which records the route taken for every label. |
 
@@ -210,12 +210,15 @@ CheckV · VIBRANT · PhaBOX · CoverM · GTDB-Tk · Cenote-Taker 3 · Prodigal �
 | Parameter | Value | Source |
 |---|---|---|
 | HMM e-value cutoff | 1e-5 | as VIBRANT (Kieft, Zhou & Anantharaman 2020, *Microbiome* 8:90) |
-| genomic context window | ±10 ORFs | DRAM-v style (Shaffer et al. 2020, *NAR* 48:8883) |
-| auxiliary score retained | ≤ 3 | `DRAM-v distill` default |
+| genomic context window | ±10 ORFs | criterion adopted from DRAM-v (Shaffer et al. 2020, *NAR* 48:8883) |
+| auxiliary score retained | ≤ 3 | `DRAM-v distill` default value, applied here |
 | minimum contig length | 5,000 bp | flag, never a filter |
 | conservative subset | ≥ 10,000 bp or circular | Pratama et al. 2021, *PeerJ* 9:e11447 |
 
-PADLOC hits use PADLOC's own per-profile thresholds (`e.val.threshold`, `hmm.coverage.threshold`, `target.coverage.threshold`) read from `hmm_meta.txt`, so no cutoff is invented.
+Two clarifications on where these come from:
+
+- **DRAM-v was not run.** Its auxiliary score is a positional rule — how many viral hallmark genes flank the gene of interest — so the criterion and its default threshold (≤ 3) were adopted and computed directly from the ORF table in `genes/04_score_context.py`. This keeps the rule visible in the code and removes a large reference-database dependency. The implementation is in that script and can be inspected line by line.
+- **PADLOC hits use PADLOC's own per-profile thresholds** (`e.val.threshold`, `hmm.coverage.threshold`, `target.coverage.threshold`), read from its `hmm_meta.txt`, so no cutoff is invented. This reproduces PADLOC's gene-level filter and is deliberately not its system-level logic: the question asked here is which proteins pass PADLOC's own per-profile thresholds, which is a statement about genes rather than systems.
 
 ## Notes
 
