@@ -1,109 +1,157 @@
 # WAP-virosphere
 
-Analysis pipeline for the construction, curation, functional annotation, and statistical/graphical analysis of a viral operational taxonomic unit (vOTU) catalog, developed for the associated paper on viral diversity and ecology along the Western Antarctic Peninsula.
+Analysis pipeline for the construction, curation, functional annotation
+and statistical analysis of a viral operational taxonomic unit (vOTU)
+catalogue, developed for the associated paper on viral diversity and
+ecology along the Western Antarctic Peninsula.
 
 ## Abstract
 
-Marine viruses are central regulators of Southern Ocean biogeochemistry, yet polar viromics has focused almost exclusively on free-living viral particles, leaving the integrated prophage reservoir largely unexplored. Here we applied a multi-fraction strategy — free-living viral concentrates, environmental bacterial fractions, cultivated bacterial communities, and mitomycin C-induced lysates — combined with hybrid short- and long-read assembly across four stations along the Western Antarctic Peninsula. This approach yielded 11,100 non-redundant viral operational taxonomic units (vOTUs). Viral assemblages partitioned sharply by fraction: free-living communities were dominated by potentially virulent phages, whereas culture-dependent fractions harboured a substantially higher proportion of temperate phages (63.8% vs 22.4% in the non-amplified, non-induced contrast). This dichotomy was mirrored functionally, with 1,441 auxiliary viral genes and 1,964 defence-associated genes distributed unevenly between the two groups. Synteny mapping of co-resident prophages within *Vibrio diabolicus* and *V. alginolyticus* MAGs revealed stacked restriction-modification, addiction, and diversity-generating retroelement systems. These results establish a genomic baseline for a virosphere whose temperate component remains invisible to conventional viromics.
+Marine viruses are central regulators of Southern Ocean biogeochemistry,
+yet polar viromics has focused almost exclusively on free-living viral
+particles, leaving the integrated prophage reservoir largely unexplored.
+Here we applied a multi-fraction strategy — free-living viral
+concentrates, environmental bacterial fractions, cultivated bacterial
+communities, and mitomycin C-induced lysates — combined with hybrid short-
+and long-read assembly across four stations along the Western Antarctic
+Peninsula. This approach yielded 11,100 non-redundant vOTUs. Viral
+assemblages partitioned sharply by fraction, and this dichotomy was
+mirrored functionally, with 1,441 auxiliary viral genes and 1,860
+defence-associated genes distributed unevenly between the two groups.
+Synteny mapping of co-resident prophages within *Vibrio diabolicus* and
+*V. alginolyticus* MAGs revealed stacked restriction–modification,
+addiction and diversity-generating retroelement systems.
+
+---
 
 ## Overview
 
-The workflow takes a dereplicated viral contig catalog and produces a curated vOTU master table, a gene-level catalog of auxiliary viral genes (AVGs) and defence-associated genes, the supplementary tables, and the publication figures. It is organised into two parallel branches that are joined at the end:
+The workflow takes a dereplicated viral contig catalogue and produces a
+curated vOTU master table, a gene-level catalogue of auxiliary viral genes
+(AVGs) and defence-associated genes, the supplementary tables and the
+publication figures. It is organised as **two parallel branches joined at
+the end**:
 
-1. **vOTU branch** (`votus/`) — one row per vOTU. Builds and progressively enriches the master table with quality, taxonomy, host, lifestyle and abundance data.
-2. **Gene branch** (`genes/`) — one row per ORF. Adds annotation and specialist-tool evidence, then makes a single classification decision per gene.
-3. **Join, tables and QC** (top level) — merges both branches, derives per-vOTU gene counts, builds the supplementary tables and runs the verification scripts.
-4. **Figures** (`figures/`) — statistical analysis and publication-quality figures in R.
+1. **vOTU branch** (`votus/`) — one row per vOTU. Answers *what each virus
+   is*: quality, taxonomy, host, lifestyle, abundance.
+2. **Gene branch** (`genes/`) — one row per ORF. Answers *what genes it
+   carries*: annotation, specialist-tool evidence, then a single
+   classification decision per gene.
+3. **Join, loci, tables and QC** (top level) — merges both branches,
+   reconstructs defence loci, builds the supplementary tables and runs the
+   verification scripts.
+4. **Figures** (`figures/`) — statistics and publication figures in R.
 
-All paths, thresholds, search patterns and category definitions live in `config.py`. If any of them appears elsewhere in the pipeline, that is a bug.
+All paths, thresholds, search patterns and category definitions live in
+`config.py`. If any of them appears elsewhere in the pipeline, that is a
+bug.
 
 ### Key numbers
 
-Generated by `99_qc.py` and written to `out/99_qc_report.txt`. Manuscript numbers are copied from that file rather than re-derived by hand.
+Generated by `99_qc.py` and `instantanea.py`. **Manuscript numbers are
+copied from those reports rather than re-derived by hand.**
 
 | | |
 |---|---|
 | vOTUs assembled | 59,469 |
-| vOTUs in the final catalog | 11,100 |
+| vOTUs in the final catalogue | 11,100 |
 | supported by ≥ 2 lines of viral evidence | 10,671 (96.1%) |
 | conservative subset (≥ 10 kb or circular) | 3,810 |
-| auxiliary viral genes (AVG) | 1,441, in 757 vOTUs |
-| defence-associated genes | 1,964, in 1,459 vOTUs |
+| auxiliary viral genes (AVG) | 1,441 |
+| defence-associated genes | 1,860 |
+| reconstructed defence loci | 1,718 |
+| complete defence loci | 921 |
+| complete loci on the two defence axes (Fig. 3) | 886 |
 
-| Defence category | n | % |
+Defence genes by category (gene level):
+
+| Category | n | % |
 |---|---|---|
-| Nucleic acid degradation | 840 | 42.8 |
-| Other / uncharacterised systems | 386 | 19.7 |
-| Abortive infection | 383 | 19.5 |
-| Genome modification | 318 | 16.2 |
-| Host manipulation (phage-encoded) | 31 | 1.6 |
+| Nucleic acid degradation | 840 | 45.2 |
+| Abortive infection | 383 | 20.6 |
+| Other / uncharacterised systems | 319 | 17.2 |
+| Genome modification | 281 | 15.1 |
+| Host manipulation (phage-encoded) | 31 | 1.7 |
 | CRISPR-Cas | 6 | 0.3 |
+
+Complete defence loci by axis (Fig. 3):
+
+| Axis | n | % |
+|---|---|---|
+| Counter-defence | 599 | 67.6 |
+| Defence | 287 | 32.4 |
+
+The gene-level and locus-level category distributions differ, because a
+locus whose restriction–modification call is rescinded for lack of an
+endonuclease is recounted as an orphan methyltransferase under *Genome
+modification*. See *Defence loci* below.
+
+---
 
 ## Repository structure
 
 ```
 pipeline/
   config.py
-
   votus/
-    01_build_base.py
-    02_add_vibrant.py
-    03_add_coverm.py
-    04_add_phabox_gtdb.py
-    05_add_ct3.py
-    06_filter_catalog.py
-
+    01_build_base.py            04_add_phabox_gtdb.py
+    02_add_vibrant.py           05_add_ct3.py
+    03_add_coverm.py            06_filter_catalog.py
   genes/
-    01_build_gene_table.py
-    02_add_evidence.py
-    03_kegg_categories.py
-    04_score_context.py
-    05_classify.py
-    06_harmonise_categories.py
-
+    01_build_gene_table.py      04_score_context.py
+    02_add_evidence.py          05_classify.py
+    03_kegg_categories.py       06_harmonise_categories.py
+  loci/
+    reconstruir_loci.py
+    mapa_v2.tsv … mapa_v5.tsv
   07_join_and_report.py
   08_build_supplementary_tables.py
   98_audit_annotations.py
   99_qc.py
-
+  instantanea.py
+  verificar_entramado.py
+  verificar_categorias.py
+audits/
+  README.md   (not pipeline: the analyses that set the rules)
 figures/
-  01_stats.R
-  02_Fig2.R
-  02_Fig3.R
-  Fig4.R
-  Fig5.R
-  Fig6.R
-
+  01_stats.R          Fig4.R
+  stats_loci_defence.R Fig5.R
+  02_Fig2.R           Fig6.R
+  02_Fig3.R           palette_paper.R, palette_maps.R
 data/
   README.md   (expected input file structure; raw data not included)
 README.md
 ```
 
+---
+
 ## 1. vOTU branch
 
 | Step | Script | Description |
 |---|---|---|
-| 1 | `01_build_base.py` | Builds the base master table from the representative vOTU FASTA (source of truth for IDs), extracts ecological metadata from sequence names (zone, fraction, MDA), traces provirus/MAG origin from the cluster file, and adds CheckV quality metrics. |
-| 2 | `02_add_vibrant.py` | Adds VIBRANT lifestyle and quality predictions. |
-| 3 | `03_add_coverm.py` | Adds abundance (TPM) from CoverM, with cleaned column names per zone and fraction. Only the two non-MDA libraries are used for quantification. |
-| 4 | `04_add_phabox_gtdb.py` | Integrates PhaBOX taxonomy, lifestyle and host predictions, and cross-references GTDB-Tk taxonomy for phages originating from MAGs. Reads both the bacterial (`bac120`) and archaeal (`ar53`) GTDB-Tk summaries. |
-| 5 | `05_add_ct3.py` | Merges Cenote-Taker 3 results (topology, taxonomy, virion/replicase/RdRP hallmark counts), with merge auditing. |
-| 6 | `06_filter_catalog.py` | Applies the final curation filter: combines viral evidence from all tools, applies length and rescue criteria, consolidates redundant columns, removes eukaryotic and virophage contamination, and reports a cascading (waterfall) filtering summary. |
+| 1 | `01_build_base.py` | Builds the base table from the representative vOTU FASTA (source of truth for IDs), parses the sampling design from sequence names into four independent columns (zone, fraction group, MDA, mitomycin), traces provirus and MAG origin from the cluster file, and adds CheckV metrics. `Cluster_has_Provirus` is inherited if any cluster member is a CheckV provirus. |
+| 2 | `02_add_vibrant.py` | Adds VIBRANT lifestyle, quality and `Vibrant_predicted`. Predictions on excised prophages, named `<scaffold>_fragment_N`, are reassigned to the parent contig. Where a contig yields several predictions, quality takes the best row and lifestyle takes lysogenic over lytic: a prophage prediction is positive evidence, its absence is not. |
+| 3 | `03_add_coverm.py` | Adds abundance (TPM), with cleaned column names per zone and fraction. Only the two non-MDA libraries are used for quantification, but all vOTUs are measured, since libraries are cross-mapped against the whole catalogue. `In_CoverM` keeps *absent from the abundance table* distinct from *present but undetected*. |
+| 4 | `04_add_phabox_gtdb.py` | Integrates the four PhaBOX modules (PhaMer: viral; PhaGCN: taxonomy; PhaTYP: lifestyle; CHERRY: host) and GTDB-Tk taxonomy for MAG-derived phages, reading both the `bac120` and `ar53` summaries. Host assignment follows a declared hierarchy recorded in `Host_Source`. |
+| 5 | `05_add_ct3.py` | Merges Cenote-Taker 3 topology, taxonomy and hallmark counts, with merge auditing, and consolidates taxonomy across CT3 and PhaBOX by depth, recording the winner in `Taxonomy_Source`. |
+| 6 | `06_filter_catalog.py` | The catalogue filter: viral evidence, length with a rescue clause, and removal of eukaryotic viruses and virophages. Assigns lifestyle in three tiers. Reports a cascading filtering summary. |
+
+---
 
 ## 2. Gene branch
 
 | Step | Script | Description |
 |---|---|---|
-| 1 | `01_build_gene_table.py` | Builds the ORF-level spine from the Prodigal GFF and attaches VIBRANT's annotation columns (KO, Pfam, VOG, AMG flag), indexed by position rather than concatenated into a single string. |
+| 1 | `01_build_gene_table.py` | Builds the ORF-level spine from the Prodigal GFF and attaches VIBRANT's annotation as separate columns (KO, Pfam, VOG, AMG flag), indexed by position rather than concatenated into one string, so each database keeps its own e-value and the AMG flag is read as a field. |
 | 2 | `02_add_evidence.py` | Adds DefenseFinder and PADLOC results as evidence columns. No gene is classified here: each tool keeps its own opinion in its own columns. PADLOC hits are filtered with PADLOC's own per-profile thresholds, read from `hmm_meta.txt`. Also flags whether each hit belongs to a complete multi-gene system. |
-| 3 | `03_kegg_categories.py` | Builds the KO → KEGG pathway category lookup used to classify AVGs. |
-| 4 | `04_score_context.py` | Computes a genomic-context auxiliary score (viral hallmark genes within ±10 ORFs), applied to every ORF so that AVGs and defence genes are held to the same criterion. The scoring criterion and its retention threshold follow DRAM-v (Shaffer et al. 2020); DRAM-v itself was not run, and the score is computed here directly from the ORF table, which avoids a large external reference database for what is a positional rule. |
-| 5 | `05_classify.py` | The single classification decision, under one declared precedence (see below). Produces `gene_class`, `class_source` and the raw category label. |
-| 6 | `06_harmonise_categories.py` | Resolves each raw label to one of six mechanistic categories, trying the PADLOC system name, then the profile's protein name, then the label itself. Writes `06_category_map.tsv`, which records the route taken for every label. |
+| 3 | `03_kegg_categories.py` | Builds the KO → KEGG category lookup used for AVGs. A KO may belong to several categories; the primary one is that in which it occurs in the greatest number of distinct pathways, with a declared tie-break. Full membership is retained alongside. |
+| 4 | `04_score_context.py` | Computes a genomic-context auxiliary score (viral hallmark genes within ±10 ORFs), applied to every ORF so that AVGs and defence genes are held to the same criterion. |
+| 5 | `05_classify.py` | The single classification decision, under one declared precedence (below). Produces `gene_class`, `class_source` and the raw category label. |
+| 6 | `06_harmonise_categories.py` | Resolves each raw label to one of six mechanistic categories, trying the PADLOC system name, then the profile's **protein** names, then the label itself. Protein names are consulted before the label because some PADLOC profiles are named after a database accession, which carries no meaning. Writes `06_category_map.tsv`, recording the route taken for every label. |
 
 ### The classification rule
 
-All gene classification happens in `05_classify.py`, under one precedence, applied in this order:
+All gene classification happens in `05_classify.py`, under one precedence:
 
 | Rule | Source | Result |
 |---|---|---|
@@ -113,68 +161,180 @@ All gene classification happens in `05_classify.py`, under one precedence, appli
 | 3 | VIBRANT AMG flag + KEGG lookup | `AVG` |
 | 4 | — | `Other` |
 
-Search patterns are matched only against `KO name` and `Pfam name`, never against `VOG name`, which describes a reference protein from a different organism.
+Search patterns are matched only against `KO name` and `Pfam name`, never
+against `VOG name`, which describes a reference protein from a different
+organism.
 
-**Core-function veto.** A specialist defence assignment is rejected when the protein's own annotation identifies it as a core replication, repair or metabolic enzyme, or as a prophage lifecycle regulator. This is needed because the HMM profiles of poorly characterised defence families capture core cellular machinery: DNA polymerase A, primases, SNF2 and RecB-family helicases, and preQ₀ biosynthesis enzymes all appear under defence labels. Nothing is discarded — a vetoed protein falls through to rules 2 and 3, so a metabolic enzyme rejected here is counted as an AVG, which is what it is. Every veto is recorded in `class_source` and exported in Table S3.
+Rule 1 outranks rule 3 because an HMM profile built on a described system
+is stronger evidence than a generic auxiliary-gene flag. **Rule 2 exists
+because the specialist tools model bacterial anti-phage systems** and do
+not search for lysogenic conversion, superinfection exclusion, phage
+communication or SOS modulation — categories specific to phages.
+
+**Core-function veto.** A candidate defence assignment is rejected when
+the protein's own annotation identifies it as a core replication, repair
+or metabolic enzyme, or as a prophage lifecycle regulator. This is needed
+because the HMM profiles of poorly characterised defence families capture
+core cellular machinery: DNA polymerase A, primases, SNF2 and RecB-family
+helicases and preQ₀ biosynthesis enzymes all appear under defence labels.
+
+The veto is evaluated **once, on the protein, before any rule is
+dispatched**. Evaluating it per rule leaves a route open: a protein with
+no specialist call reaches rule 2 unchecked, where a generic
+restriction-enzyme term matches the Pfam domain shared by genuine Type III
+restriction subunits and the repair helicases RadD, IRC3 and UvsW.
+
+Nothing is discarded — a vetoed protein falls through to rules 2 and 3, so
+a metabolic enzyme rejected here is counted as an AVG, which is what it
+is. Every veto is recorded in `class_source` and exported in Table S3.
 
 ### Defence categories
 
-Six mechanism-based categories following Georjon & Bernheim (2023) *Nat Rev Microbiol* 21:686–700:
+Six mechanism-based categories following Georjon & Bernheim (2023)
+*Nat Rev Microbiol* 21:686–700:
 
-`CRISPR-Cas` · `Nucleic acid degradation` · `Genome modification` · `Abortive infection` · `Other / uncharacterised systems` · `Host manipulation (phage-encoded)`
+`CRISPR-Cas` · `Nucleic acid degradation` · `Genome modification` ·
+`Abortive infection` · `Other / uncharacterised systems` ·
+`Host manipulation (phage-encoded)`
 
-A system is assigned to a mechanistic category only where a primary source describes its molecular activity. Systems whose mechanism is not established in the literature go to *Other / uncharacterised systems*, regardless of how well characterised their detection is. Georjon & Bernheim report that the mechanisms of more than half (58%) of known antiphage systems are undeciphered, so a large *Other* category is the expected outcome.
+A system is assigned to a mechanistic category only where a primary source
+describes its molecular activity. Systems whose mechanism is not
+established go to *Other / uncharacterised systems*, regardless of how
+well characterised their detection is. Georjon & Bernheim report that the
+mechanisms of more than half (58%) of known antiphage systems are
+undeciphered, so a large *Other* category is the expected outcome of an
+honest classification, not a failure of one.
 
-Assignments were checked against Doron et al. (2018) *Science* 359:eaar4120, Hampton, Watson & Fineran (2020) *Nature* 577:327–336, and Georjon & Bernheim (2023), plus targeted post-2023 sources where a mechanism was resolved after those reviews. The supporting citation for each assignment is a comment beside it in `config.py` and is collected in `cats.tsv`.
+Assignments were checked against Doron et al. (2018) *Science*
+359:eaar4120, Hampton, Watson & Fineran (2020) *Nature* 577:327–336, and
+Georjon & Bernheim (2023), plus targeted post-2023 sources where a
+mechanism was resolved after those reviews. The supporting citation for
+each assignment sits beside it in `config.py` and is collected in
+Table S4.
 
-**Categories are system-level, not gene-level.** A gene is filed under the defence *system* it belongs to, not the biochemistry of the individual protein — so the methyltransferase subunit of a restriction-modification system appears under *Nucleic acid degradation*. This follows how PADLOC and DefenseFinder report, and is stated in the figure legends.
+**Categories are system-level, not gene-level.** A gene is filed under the
+defence *system* it belongs to, not the biochemistry of the individual
+protein — so the methyltransferase subunit of a restriction–modification
+system appears under *Nucleic acid degradation*. This follows how PADLOC
+and DefenseFinder report, and is stated in the figure legends. The
+exception is a system call that the locus reconstruction rescinds; see
+below.
 
-## 3. Join, tables and QC
+---
+
+## 3. Defence loci
+
+`loci/reconstruir_loci.py` groups defence genes into loci by position and
+evaluates each against the architecture its family requires, curated per
+family in `mapa_v5.tsv`.
+
+`mapa_v5.tsv` is not a lookup table but a **curated knowledge base**: 22
+columns per family recording the required components, the maximum window,
+what to do with an incomplete locus or one at a contig edge, the level of
+evidence, the confidence when isolated versus complete, and a literature
+reference.
+
+A locus is counted only when every architecturally required component is
+present — both GajA and GajB for Gabija; a reverse transcriptase within
+the window for a retron; both a methyltransferase and an endonuclease for
+a type II restriction–modification system.
+
+**Where the evidence rescinds a system call, the category follows the
+reassignment.** A locus carrying a methyltransferase but no endonuclease
+is not a restriction–modification system: it is relabelled an orphan
+methyltransferase and counted under *Genome modification* rather than
+retaining the *Nucleic acid degradation* label of the ruled-out system.
+
+Each locus also carries an **axis**, describing what the element does from
+the phage's point of view: counter-defence (protecting the phage genome
+from host systems) or defence proper (acting against incoming genetic
+material). Both are pooled as Defence in Figure 3; the axis of every locus
+is exported.
+
+---
+
+## 4. Join, tables and QC
 
 | Step | Script | Description |
 |---|---|---|
-| 7 | `07_join_and_report.py` | Joins both branches and applies the category map. Per-vOTU gene counts are derived here, once, by aggregating the gene table. Filtering is left to reporting time: the long table carries `Passes_catalog`, `Conservative_10kb` and `passes_context` as flags, so every sensitivity analysis is a `filter()` in R. |
+| 7 | `07_join_and_report.py` | Joins both branches and applies the category map. Per-vOTU gene counts are derived here, once, by aggregation. Filtering is left to reporting time: the long table carries `Passes_catalog`, `Conservative_10kb` and `passes_context` as flags, so every sensitivity analysis is a `filter()` in R. |
 | 8 | `08_build_supplementary_tables.py` | Builds Supplementary Tables S2 (one row per vOTU) and S3 (one row per AVG/defence gene), and checks that the two reconcile. |
-| 98 | `98_audit_annotations.py` | Audits every gene against its own annotation: checks that no defence gene carries a core-function identity, flags defence genes whose annotation contains replication/repair/ribosomal/structural vocabulary, and prints the complete, untruncated inventory of both the defence and AVG sets. Writes `98_audit_report.txt`. |
-| 99 | `99_qc.py` | Consistency checks (row counts preserved, no duplicate IDs, derived counts equal to their aggregation, flags correctly nested, category map complete) and the manuscript numbers in a single block. Exits non-zero on failure. Writes `99_qc_report.txt`. |
+| 98 | `98_audit_annotations.py` | Audits every gene against its own annotation: checks that no defence gene carries a core-function identity, flags defence genes whose annotation contains replication, repair, ribosomal or structural vocabulary, and prints the complete inventory of both sets. |
+| 99 | `99_qc.py` | Consistency checks (row counts preserved, no duplicate IDs, derived counts equal to their aggregation, flags correctly nested, category map complete) and the manuscript numbers in a single block. Exits non-zero on failure. |
+| — | `verificar_entramado.py` | Twelve checks that the totals hold across tables. |
+| — | `verificar_categorias.py` | Eight checks that the category logic holds **locus by locus** — that orphan methyltransferases sit on the counter-defence axis and orphan nucleases on the defence axis, an asymmetry that is biologically motivated and would break if the reassignment were applied mechanically. |
+| — | `instantanea.py` | Writes a single timestamped snapshot of every count the manuscript relies on, with file checksums, so versions cannot drift unnoticed. |
 
-Two limitations are reported rather than left implicit: only 6.9% of defence genes belong to a complete multi-gene system (expected on phage contigs, and exported per gene in Table S3 as `In_complete_system`), and 17.1% have neither a KO nor a Pfam assignment, so for those the specialist call is the only available evidence.
+Two limitations are reported rather than left implicit: only a small
+fraction of defence genes belong to a complete multi-gene system —
+expected on phage contigs, and exported per gene in Table S3 as
+`In_complete_system` — and a substantial fraction have neither a KO nor a
+Pfam assignment, so for those the specialist call is the only available
+evidence.
 
-## 4. Figures (R)
+---
+
+## 5. Figures (R)
 
 | Script | Figure | Description |
 |---|---|---|
-| `01_stats.R` | — | Full statistical report: alpha/beta diversity, Fisher/Wilcoxon/χ² tests with Benjamini-Hochberg FDR correction, biogeography, completeness-vs-lifestyle bias control. |
-| `02_Fig2.R` | Fig. 2 | Ecological overview: vOTU richness and abundance by fraction, community structure (Bray-Curtis PCoA + PERMANOVA), lifestyle distribution, zone/fraction overlap, viral taxonomy and predicted host composition. |
-| `02_Fig3.R` | Fig. 3 | AVG and defence gene analysis: category abundance by cultivation origin and lifestyle (butterfly plot), genomic load comparison, functional category heatmap. |
-| `Fig4.R` | Fig. 4 | Genomic maps of lytic vOTUs of interest, parsed from Cenote-Taker 3 GenBank (`.gbf`) files. |
-| `Fig5.R` | Fig. 5 | Genomic maps of prophage regions in a *Vibrio diabolicus* MAG, highlighting defence systems, AVGs and diversity-generating retroelements, parsed from Bakta GFF3. |
-| `Fig6.R` | Fig. 6 | Genomic maps of prophage regions in a *Vibrio alginolyticus* MAG, highlighting defence systems and DGR elements. |
+| `01_stats.R` | — | Statistical report: alpha and beta diversity, Fisher, Wilcoxon and χ² tests with Benjamini–Hochberg correction, biogeography, completeness-versus-lifestyle bias control. |
+| `stats_loci_defence.R` | — | The defence statistics at **locus** level, and the category reassignment. Must run between `reconstruir_loci.py` and `02_Fig3.R`. |
+| `02_Fig2.R` | Fig. 2 | Ecological overview: richness and abundance by fraction, community structure (Bray–Curtis PCoA and PERMANOVA), lifestyle distribution, zone and fraction overlap, taxonomy and predicted host. |
+| `02_Fig3.R` | Fig. 3 | AVG and defence analysis: category density by cultivation origin and lifestyle, enrichment, fraction × lifestyle interaction, functional heatmap. |
+| `Fig4.R` | Fig. 4 | Genomic maps of free-living vOTUs, parsed from Cenote-Taker 3 GenBank files. |
+| `Fig5.R` | Fig. 5 | Co-resident prophages in a *Vibrio diabolicus* MAG, parsed from Bakta GFF3. |
+| `Fig6.R` | Fig. 6 | Co-resident prophages in a *Vibrio alginolyticus* MAG. |
+| `palette_paper.R`, `palette_maps.R` | — | Shared colour and vocabulary definitions, with assertions that fail if two categories share a colour or a label is left untranslated. |
 
-Figures 2 and 3 read the pipeline output directly. Figures 4–6 show representative genomes selected from the catalog; their boundaries, lengths, quality and taxonomy come from the pipeline, but ORF coordinates and gene labels are annotated independently with Cenote-Taker 3 or Bakta and cross-checked against VIBRANT and PHASTEST, so gene-level labels there are finer than the six mechanistic categories used in Figure 3.
+Figures 4–6 show representative genomes selected from the catalogue. Their
+boundaries, lengths, quality and taxonomy come from the pipeline, but ORF
+coordinates and gene labels are annotated independently with Cenote-Taker
+3 or Bakta and cross-checked against VIBRANT and PHASTEST, so gene-level
+labels there are finer than the six mechanistic categories used in
+Figure 3.
 
-All figure scripts export PNG (review), TIFF (600 dpi, LZW-compressed, journal-ready) and EPS (vectorised).
+All figure scripts export PNG (review), TIFF (600 dpi, LZW) and EPS.
+
+> **Run order matters.** `reconstruir_loci.py` → `stats_loci_defence.R` →
+> `02_Fig3.R`. The middle script translates loci into what the figure
+> expects; skipping it silently reverts Figure 3 to counting individual
+> genes.
+
+---
 
 ## Running the pipeline
 
 ```bash
 export PYTHONPATH=/path/to/pipeline
-
-python3 votus/01_build_base.py          # ... through votus/06
-python3 genes/01_build_gene_table.py    # ... through genes/06
+python3 votus/01_build_base.py          # … through votus/06
+python3 genes/01_build_gene_table.py    # … through genes/06
 python3 07_join_and_report.py
 python3 08_build_supplementary_tables.py
+python3 loci/reconstruir_loci.py
 python3 98_audit_annotations.py
 python3 99_qc.py
+python3 instantanea.py > INSTANTANEA.txt
 ```
 
-Each script reads the output of the previous step and writes a new, enriched table. All scripts print a summary report (input/output counts, filtering statistics, validation checks) so each stage can be verified independently.
+Each script reads the output of the previous step and writes a new,
+enriched table. All scripts print a summary report — input and output
+counts, filtering statistics, validation checks — so each stage can be
+verified independently.
 
-> In the gene branch, script numbers and output-file numbers do not line up one-to-one (`genes/04` writes `03_gene_table_context.tsv`, `genes/05` writes `04_gene_table_classified.tsv`). The output names were kept as originally written so that downstream steps did not have to be re-run when the branch was reorganised; the authoritative mapping is the `F_*` constants in `config.py`.
+> In the gene branch, script numbers and output-file numbers do not line
+> up one-to-one (`genes/04` writes `03_gene_table_context.tsv`,
+> `genes/05` writes `04_gene_table_classified.tsv`). The output names were
+> kept as originally written so that downstream steps did not have to be
+> re-run when the branch was reorganised; the authoritative mapping is the
+> `F_*` constants in `config.py`.
+
+---
 
 ## Input data
 
-Raw outputs from external tools are **not included** in this repository due to size, and are expected in the locations set at the top of `config.py`:
+Raw outputs from external tools are **not included** here due to size, and
+are expected in the locations set at the top of `config.py`:
 
 | Directory | Contents |
 |---|---|
@@ -188,45 +348,115 @@ Raw outputs from external tools are **not included** in this repository due to s
 | `defence/` | DefenseFinder HMMER/systems/genes tables, PADLOC CSV and domtblout |
 | `data/MAPAS/` | GenBank and GFF3 files for the genomic map figures |
 
-Each input file's header is asserted on read, so a shifted column fails loudly instead of producing plausible wrong numbers. See `data/README.md` for expected file naming.
+Each input file's header is asserted on read, so a shifted column fails
+loudly instead of producing plausible wrong numbers. See `data/README.md`
+for expected file naming.
+
+---
 
 ## Outputs
 
 | File | Contents |
 |---|---|
+| `votu_06_catalog.tsv` | all 59,469 representatives, flagged; 11,100 pass |
 | `07_long_table_FINAL.tsv` | one row per AVG/defence gene, with full vOTU metadata and final category |
 | `07_votu_with_counts.tsv` | the vOTU table plus `n_orfs`, `n_AVG`, `n_Defence` |
-| `Table_S2_vOTU_catalogue.tsv` | Supplementary Table S2 — 11,100 vOTUs × 22 columns |
-| `Table_S3_AVG_Defence_genes.tsv` | Supplementary Table S3 — 3,405 genes × 17 columns |
+| `10_loci_defensa.tsv` | 1,718 reconstructed defence loci, with axis, completeness and any reassignment |
+| `Table_S2_vOTU_catalogue.tsv` | Supplementary Table S2 — 11,100 vOTUs |
+| `Table_S3_AVG_Defence_genes.tsv` | Supplementary Table S3 — 3,301 genes |
 | `06_category_map.tsv` | raw defence label → mechanistic category, with the resolution route |
 | `98_audit_report.txt` | complete annotation audit |
 | `99_qc_report.txt` | consistency checks and the manuscript numbers |
-| `cats.tsv` | category → literature traceability, one row per system with its citation |
+| `INSTANTANEA.txt` | timestamped snapshot of every reported count, with checksums |
+
+---
 
 ## Software and parameters
 
-CheckV · VIBRANT · PhaBOX · CoverM · GTDB-Tk · Cenote-Taker 3 · Prodigal · DefenseFinder · PADLOC · Bakta · PHASTEST · Python 3 (pandas) · R (ggplot2, dplyr, gggenes, cowplot)
+CheckV · VIBRANT · PhaBOX · CoverM · GTDB-Tk · Cenote-Taker 3 · Prodigal ·
+DefenseFinder · PADLOC · Bakta · PHASTEST · vConTACT3 · Python 3 (pandas,
+scipy) · R (tidyverse, vegan, MASS, gggenes, pheatmap, ggupset)
+
+Exact versions in `docs/tool_versions.txt`.
 
 | Parameter | Value | Source |
 |---|---|---|
 | HMM e-value cutoff | 1e-5 | as VIBRANT (Kieft, Zhou & Anantharaman 2020, *Microbiome* 8:90) |
 | genomic context window | ±10 ORFs | criterion adopted from DRAM-v (Shaffer et al. 2020, *NAR* 48:8883) |
-| auxiliary score retained | ≤ 3 | `DRAM-v distill` default value, applied here |
+| auxiliary score retained | ≤ 3 | `DRAM-v distill` default, adopted here |
 | minimum contig length | 5,000 bp | flag, never a filter |
 | conservative subset | ≥ 10,000 bp or circular | Pratama et al. 2021, *PeerJ* 9:e11447 |
+| vOTU clustering | ≥ 95% ANI over ≥ 85% of the shorter sequence | standard viral-ecology practice |
 
-Two clarifications on where these come from:
+Three clarifications on where these come from:
 
-- **DRAM-v was not run.** Its auxiliary score is a positional rule — how many viral hallmark genes flank the gene of interest — so the criterion and its default threshold (≤ 3) were adopted and computed directly from the ORF table in `genes/04_score_context.py`. This keeps the rule visible in the code and removes a large reference-database dependency. The implementation is in that script and can be inspected line by line.
-- **PADLOC hits use PADLOC's own per-profile thresholds** (`e.val.threshold`, `hmm.coverage.threshold`, `target.coverage.threshold`), read from its `hmm_meta.txt`, so no cutoff is invented. This reproduces PADLOC's gene-level filter and is deliberately not its system-level logic: the question asked here is which proteins pass PADLOC's own per-profile thresholds, which is a statement about genes rather than systems.
+- **DRAM-v was not run.** Its auxiliary score is a positional rule — how
+  many viral hallmark genes flank the gene of interest — so the criterion
+  and its default threshold (≤ 3) were adopted and computed directly from
+  the ORF table in `genes/04_score_context.py`. This keeps the rule
+  visible in the code and removes a large reference-database dependency.
+
+- **The auxiliary score is recorded, not applied.** Its pass rate is not
+  independent of contig length, and contig length differs systematically
+  between the fractions being compared, so filtering on it would bias that
+  comparison rather than make it more conservative. The score is exported
+  per gene so readers can apply it if they wish.
+
+- **PADLOC hits use PADLOC's own per-profile thresholds**
+  (`e.val.threshold`, `hmm.coverage.threshold`,
+  `target.coverage.threshold`), read from its `hmm_meta.txt`, so no cutoff
+  is invented. This reproduces PADLOC's gene-level filter and is
+  deliberately not its system-level logic: the question asked here is
+  which proteins pass PADLOC's own per-profile thresholds, which is a
+  statement about genes rather than systems.
+
+---
+
+## `audits/`
+
+These scripts are not part of the pipeline. They are the exploratory
+analyses that determined its rules — for example the audit establishing
+that a retron call without a reverse transcriptase in the same window is
+not a retron, a requirement subsequently encoded in `mapa_v5.tsv`. They
+are included so that each design decision is traceable to the evidence
+that produced it.
+
+---
 
 ## Notes
 
-- The pipeline is organised as two branches joined at the end rather than as a single chain, so that the vOTU-level and gene-level tables can be rebuilt independently.
-- Per-vOTU gene counts are derived once, by aggregation, and never computed a second time from a different source.
-- Every exclusion, unmatched merge and fallback increments a named counter that is printed at the end of the script that owns it.
-- File paths in the R scripts are relative (`data/...`) for portability; update them if your local directory structure differs.
+- The pipeline is organised as two branches joined at the end rather than
+  as a single chain, so that the vOTU-level and gene-level tables can be
+  rebuilt independently.
+- **Nothing is deleted.** No script removes rows; filters are recorded as
+  flags and applied at reporting time.
+- **Physical evidence outranks inference.** Where two sources disagree,
+  the one grounded in the sampled material wins — a co-assembled MAG over
+  a database host prediction, a CheckV provirus boundary over a lifestyle
+  prediction, a specialist system call over a name match, a complete locus
+  over an isolated component — and the source of every call is recorded.
+- **Assertions abort.** Where a silent error is possible the pipeline
+  stops instead. Fragment ORF numbering is verified to fill its declared
+  parent range exactly, because shifted identifiers would still exist and
+  would therefore pass a mere existence check while pointing at the wrong
+  gene.
+- Per-vOTU gene counts are derived once, by aggregation, and never
+  computed a second time from a different source.
+- Every exclusion, unmatched merge and fallback increments a named counter
+  printed at the end of the script that owns it.
+- File paths in the R scripts are relative for portability; update them if
+  your directory structure differs.
+
+## Data availability
+
+Raw reads: [BioProject accession]
+Assemblies, catalogue and annotation tables: [repository, DOI]
 
 ## Citation
 
-If you use this pipeline, please cite the associated paper (details to be added upon publication).
+If you use this pipeline, please cite the associated paper (details to be
+added upon publication). Code archived at Zenodo: DOI [xxx].
+
+## License
+
+[MIT / GPL-3.0 / CC-BY-4.0 — elegir]
