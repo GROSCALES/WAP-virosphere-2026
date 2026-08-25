@@ -1,40 +1,28 @@
 #!/usr/bin/env python3
 """
-02_add_evidence.py — LEVEL 3: bolt the specialist tools onto the gene table.
+genes/02_add_evidence.py — LEVEL 3: Integrates specialist tool evidence into the gene table.
 
-Adds, as columns and nothing else:
-
-  DefenseFinder   df_system, df_profile, df_ievalue, df_profile_cov,
+Appends raw output from DefenseFinder and PADLOC as independent columns:
+  DefenseFinder : df_system, df_profile, df_ievalue, df_profile_cov,
                   df_seq_cov, df_in_complete_system
-  PADLOC          pl_system, pl_profile, pl_protein, pl_evalue,
+  PADLOC        : pl_system, pl_profile, pl_protein, pl_evalue,
                   pl_hmm_cov, pl_target_cov, pl_in_complete_system
 
-No gene is classified here. No row is created or removed. Every tool keeps
-its own opinion in its own columns; the single decision is taken in 04,
-by the precedence rule written in config.py.
+No genes are classified or filtered at this stage. Tool outputs are preserved 
+independently; final classification is resolved downstream (in step 05) via 
+explicit precedence rules.
 
-PADLOC thresholds
------------------
-padloc_domtblout_all.txt is raw hmmsearch output with NO cutoff applied —
-it contains hits with E-values above 1. PADLOC applies per-profile
-thresholds afterwards, from data/hmm_meta.txt:
-
-    e.val.threshold, hmm.coverage.threshold, target.coverage.threshold
-
-Those are the cutoffs applied below, per profile, so nothing is invented.
-Coverage is summed over all domains of a (protein, profile) pair:
-
-    hmm_cov    = sum(hmm_to  - hmm_from + 1) / qlen
-    target_cov = sum(ali_to  - ali_from + 1) / tlen
-
-This reproduces PADLOC's GENE-level filter. It is deliberately NOT its
-system-level logic: what we want is "which proteins pass PADLOC's own
-per-profile thresholds", which is a statement about genes, not systems.
+PADLOC Thresholds:
+The raw hmmsearch output is filtered using PADLOC's own per-profile thresholds 
+(from data/hmm_meta.txt): e.val.threshold, hmm.coverage.threshold, and 
+target.coverage.threshold. 
+Coverage is summed over all domains of a (protein, profile) pair. This strictly 
+reproduces PADLOC's gene-level filtering prior to any system-level architectural 
+evaluation.
 
 Input : 01_gene_table_L2.tsv
 Output: 02_gene_table_L3_evidence.tsv
 """
-
 import os
 import re
 from collections import defaultdict
