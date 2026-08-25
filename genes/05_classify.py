@@ -1,74 +1,40 @@
 #!/usr/bin/env python3
 """
-genes/05_classify.py — the ONE place where a gene is called Defence, AVG or Other.
+genes/05_classify.py — The core decision module for gene classification.
 
-Everything before this script only gathered evidence into columns. Here a
-single declared rule turns that evidence into a call, and records who said
-what, so any row can be traced back.
+Everything before this script gathers evidence. This module applies a single 
+declared precedence rule to classify each gene as Defence, AVG, or Other, 
+ensuring full traceability for every call.
 
-PRECEDENCE
-  1. specialist_defence : DefenseFinder or PADLOC assigned the protein to a
-                          defence system, each using its OWN thresholds.
-  2. vibrant_defence    : KO name or Pfam name matches a SEARCH_TERMS
-                          category, with the e-value of the field that
-                          actually matched <= EVALUE_MAX. Covers toxins,
-                          virulence, phage communication, superinfection
-                          exclusion and SOS modulation, which PADLOC and
-                          DefenseFinder do not look for.
-  3. vibrant_amg        : VIBRANT flagged the gene as an AMG (column 3).
+PRECEDENCE RULE:
+  1. specialist_defence : DefenseFinder or PADLOC assigned the protein to a 
+                          defence system (using their own thresholds).
+  2. vibrant_defence    : KO name or Pfam name matches a SEARCH_TERMS category 
+                          (e-value <= EVALUE_MAX). Covers viral-specific functions 
+                          like toxins, phage communication, and SOS modulation 
+                          that specialists do not track.
+  3. vibrant_amg        : VIBRANT flagged the gene as an AMG.
   4. other
 
-Rule 1 over rule 3 replaces the old hand-picked RECLASSIFY_DEFENSE list of
-four KOs with a stated criterion.
+Note on Rule 2: Searches are strictly limited to 'KO name' and 'Pfam name'. 
+'VOG name' describes a reference protein from a different organism and is 
+deliberately excluded from identity assignment to prevent false homologies.
 
-Searches for rule 2 look ONLY at 'KO name' and 'Pfam name'. 'VOG name' is
-the description of a reference protein from another organism and is never
-used for identity — that was the source of every false-friend collision.
+THE CORE-FUNCTION VETO:
+HMM profiles of broadly or poorly characterised defence families sometimes capture 
+core cellular machinery (e.g., DNA polymerases, repair helicases, metabolic ATPases). 
+Before any classification is finalized, a specialist call is REJECTED if the 
+protein's own KEGG/Pfam annotation identifies it as core machinery 
+(via config.CORE_FUNCTION_REJECT).
 
---------------------------------------------------------------------------
- THE CORE-FUNCTION VETO  (added after cross-checking the specialist output)
---------------------------------------------------------------------------
-Cross-referencing every specialist call against the protein's OWN VIBRANT
-annotation showed that ~25% of them were core cellular machinery captured
-by HMM profiles of poorly characterised defence families:
+This veto is conservative by design. Vetoed genes are not discarded; they 
+fall through to Rule 3 and are evaluated as AVGs (e.g., metabolic genes 
+like cysH or cobS). Every veto is counted and recorded in 'class_source'.
 
-    UG9        609 genes   527x Pfam "DNA polymerase family A", 523x KO polA
-    UG6        166 genes   Toprim / DnaB-like helicase, KO dnaG, PEO1
-    UG39        75 genes   VirE N-domain (primase)
-    DEDDh_*    238 genes   75x KO dnaQ (Pol III proofreading epsilon subunit)
-    cd09637    166 genes   98x KO K07465 RecB exonuclease; only 1 was cas4
-    pfam13640  163 genes   110x KO K07336 / P4HA prolyl hydroxylase (metabolic)
-    SspBCDE    168 genes   37x KO cysH (PAPS reductase) vs only 3x dndC
-    Dodola     129 genes   AAA+ ATPases: clpA, clpC, cobS
-    RM          96 genes   58x radD, 24x IRC3, 83x VOG uvsW
+Nothing is filtered at this stage. Context flags (aux_score, passes_context) 
+ride along as columns so sensitivity analyses can be performed downstream in R.
 
-That last row is the SAME false-friend problem the original pipeline had:
-radD, IRC3 and uvsW are repair helicases sharing PF04851 "Type III
-restriction enzyme, res subunit". The old FALSOS_AMIGOS blacklist excluded
-them correctly; PADLOC's generic "RM" profile pulls them back in.
-
-So the veto below applies the same logic the original pipeline already
-used, now to the specialists' output as well:
-
-    a specialist defence call is REJECTED when the protein's own KEGG
-    orthologue identifies it as a core replication, repair or metabolic
-    enzyme (config.CORE_FUNCTION_REJECT).
-
-Deliberately conservative, at a known cost. Cas4 is genuinely a RecB-family
-exonuclease, so rejecting KO K07465 discards a handful of real Cas4 calls
-along with ~98 generic exonucleases. With only 1 of 166 cd09637 hits
-actually annotated cas4, erring towards rejection is the right trade: a
-reviewer who opens the supplementary table and finds 609 "defence genes"
-that are DNA polymerase I stops trusting the whole table.
-
-Vetoed genes are NOT discarded. They fall through to rules 2 and 3, so a
-cysH or cobS rejected here is picked up as an AVG, which is what it is.
-Every veto is counted, and the reason is written into class_source.
-
-Nothing is filtered. aux_score and passes_context ride along as columns so
-the sensitivity analysis is a filter() in R.
-
-Input : 03_gene_table_context.tsv , 03_ko_kegg_categories.tsv
+Input : 03_gene_table_context.tsv, 03_ko_kegg_categories.tsv
 Output: 04_gene_table_classified.tsv
 """
 
