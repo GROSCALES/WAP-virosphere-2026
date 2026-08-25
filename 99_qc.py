@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 """
-99_qc.py — run this before plotting anything.
+99_qc.py — Quality Control gate and manuscript statistics generator.
 
-Two jobs.
+This script serves two primary functions:
 
-  1. CONSISTENCY. Checks that cannot pass if the pipeline has silently
-     drifted: row counts preserved at every stage, no duplicated IDs, the
-     per-vOTU counts equal to the aggregation of the gene table, flags
-     nested correctly, category map complete. Each check prints PASS or
-     FAIL, and the script exits non-zero if anything fails, so it can gate
-     a Makefile or a CI job.
+  1. STRUCTURAL CONSISTENCY: Enforces data integrity across the entire pipeline.
+     Asserts that row counts are strictly preserved across merges, IDs are 
+     unique, per-vOTU derived counts perfectly match the explicit aggregation 
+     of the gene table, length/evidence flags are logically consistent, and 
+     the category map is completely resolved. Exits non-zero on any failure, 
+     acting as a strict gate for automated execution (e.g., Makefiles).
 
-  2. THE NUMBERS FOR THE MANUSCRIPT, in one place, so that what goes into
-     the text is copied from a single generated block instead of being
-     re-derived by hand each time a script is re-run.
+  2. MANUSCRIPT METRICS: Compiles all summary statistics required for the 
+     manuscript into a single, centralized output block. This guarantees that 
+     all reported numbers are deterministically generated directly from the 
+     final tables, preventing manual tallying errors.
 
-Nothing here modifies any file.
+Note: This is a read-only execution; it modifies no pipeline outputs.
 """
 
 import os
