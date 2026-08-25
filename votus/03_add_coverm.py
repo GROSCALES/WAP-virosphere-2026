@@ -1,33 +1,17 @@
 #!/usr/bin/env python3
 """
-votus/03_add_coverm.py — abundance (TPM) from CoverM cross-mapping.
+"""
+votus/03_add_coverm.py — Abundance (TPM) from CoverM cross-mapping.
 
-Only CB22 and GLI reads were mapped: VIRFC and LIS are MDA-amplified and
+Only CB22 (BAC) and GLI (CUL) reads were mapped: VIRFC (VIR) and LIS (LIS) are MDA-amplified and
 cannot be quantified. Every vOTU in the catalogue is nevertheless measured,
 because all libraries are cross-mapped against the whole catalogue. So a
 VIRFC-derived vOTU with TPM 0 everywhere means "not detected in the
 quantitative libraries", which is a real, interpretable state — not missing
 data.
 
-Rebuild of 03_add_coverm.py, with three things fixed:
-
-  1. COLUMN COLLISIONS. The original renamed columns by regex to
-     TPM_<zone>_<fraction>. If two source columns mapped to the same name,
-     pandas would silently create duplicate columns and every later
-     positional access would be wrong. Now asserted.
-
-  2. NA vs ZERO. The original did fillna(0), which merges "vOTU absent from
-     the CoverM table" with "vOTU present but not detected". They are
-     different and are now counted separately.
-
-  3. UNEXPECTED FRACTIONS. If a TPM column turns up for a fraction that
-     config says was not quantified, that is a contradiction between the
-     data and the stated design, and the script says so instead of
-     carrying on.
-
 Adds TPM_total, TPM_<group> sums, n_samples_detected, and reports what
-share of total viral abundance the length-filtered subsets capture — the
-number that answers "why did you discard 80% of your contigs?".
+share of total viral abundance the length-filtered subsets capture.
 
 Output: votu_03_coverm.tsv
 """
