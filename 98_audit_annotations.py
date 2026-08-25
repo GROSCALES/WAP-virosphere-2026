@@ -1,53 +1,27 @@
 #!/usr/bin/env python3
 """
-98_audit_annotations.py — audit EVERY gene against its own annotation.
+98_audit_annotations.py — Comprehensive biological audit of gene classifications.
 
-WHY THIS EXISTS
----------------
-99_qc.py checks that the pipeline is internally consistent: row counts
-preserved, no duplicates, derived counts equal to their aggregation, every
-category in the declared vocabulary. All of that can pass perfectly while
-the biology is wrong, because it never asks the one question that matters:
+While structural QC ensures data integrity (row counts, non-duplication), this 
+script validates the biological consistency of the pipeline: it asserts that 
+every gene's final classification is supported by its underlying annotation.
 
-    does each gene's own annotation support the class it was given?
+Validation Checks:
+  1. CORE-FUNCTION LEAKAGE (Strict): Asserts that no gene classified as Defence 
+     carries an identity matching config.CORE_FUNCTION_REJECT. This enforces 
+     the absolute integrity of the pre-classification veto mechanism. Exits 
+     non-zero (fails the pipeline) if violated.
+  2. SUSPECT VOCABULARY: Flags Defence genes whose annotations contain terms 
+     associated with cellular replication, repair, translation, or structural 
+     phage components for manual review.
+  3. FULL DEFENCE INVENTORY: Compiles every distinct (category, KO name, Pfam 
+     name, classification rule) tuple with its frequency.
+  4. AVG INVENTORY: Compiles the equivalent exhaustive inventory for Auxiliary 
+     Metabolic Genes (AVGs).
+  5. REFERENCE COVERAGE: Asserts that every raw defence label maps successfully 
+     to the explicitly declared semantic vocabulary.
 
-Every error found in this pipeline by hand was of that kind, and every one
-was found by eyeballing a `sort | uniq -c | head`:
-
-  * 96 radD/IRC3/SMARCAL1 repair helicases re-admitted as Defence through
-    rule 2 after the veto had rejected them (fixed: rule 2 now respects
-    veto_flag).
-  * 232 more of the same, this time never vetoed at all, because the veto
-    was only evaluated for proteins that had a specialist call (fixed: the
-    veto is now computed once per protein, before any rule).
-  * 35 Zot virion-assembly ATPases counted as virulence factors.
-  * 25 phage endolysins counted as typhoid-toxin secretion.
-  *  9 archaeal CetZ tubulins counted as phage-nucleus proteins.
-  *  2 maltose-regulon activators counted as quorum sensing.
-  *  1 alkB DNA-repair demethylase counted as a methyltransferase.
-
-`head` is the problem: every one of those was found near the top of a
-frequency-sorted list, so anything rare enough to fall below the cut was
-never looked at. This script looks at ALL of it, and fails loudly.
-
-WHAT IT CHECKS
-  1. CORE-FUNCTION LEAK. No gene classed Defence may carry an identity that
-     matches config.CORE_FUNCTION_REJECT. This is a hard invariant now that
-     the veto is evaluated per protein; a non-zero count means a regression.
-  2. SUSPECT VOCABULARY. Flags Defence genes whose own annotation contains
-     replication / repair / ribosomal / structural-phage words. These are
-     NOT automatically wrong, but every one should be recognisable.
-  3. FULL INVENTORY. Every distinct (category, KO name, Pfam name) with its
-     count and the rule that produced it. No head, no truncation. This is
-     the file to read end to end before submitting.
-  4. AVG SIDE. The same inventory for auxiliary viral genes, which have
-     never been audited: they come from VIBRANT's AMG flag plus a KEGG
-     lookup, and no one has checked what the proteins actually are.
-  5. REFERENCE COVERAGE. Every raw defence label present in the data must
-     appear in the category map, and every harmonised category must be one
-     of the six declared.
-
-Output: 98_audit_report.txt   (and a non-zero exit if check 1 fails)
+Output: 98_audit_report.txt (and a non-zero exit code if Check 1 fails).
 """
 
 import os
