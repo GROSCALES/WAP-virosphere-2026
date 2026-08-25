@@ -2,28 +2,14 @@
 """
 votus/02_add_vibrant.py — VIBRANT lifestyle and genome quality per vOTU.
 
-Rebuild of 02_add_vibrant.py, with two things fixed:
+Integrates VIBRANT predictions into the catalogue. 
+Excised prophages (reported as <scaffold>_fragment_N by VIBRANT) are 
+mapped back to their parent contig to ensure prediction continuity.
 
-  1. FRAGMENT NAMES. VIBRANT reports excised prophages as
-     <scaffold>_fragment_N, which never matched the catalogue's vOTU IDs.
-     Exactly the problem that lost 1,290 ORFs in the gene branch. Here the
-     suffix is stripped so every prediction lands on its parent contig.
-
-  2. DUPLICATES RESOLVED ON PURPOSE. The original did
-         drop_duplicates(subset=['vOTU_ID'], keep='first')
-     with the comment "safety patch". But a contig carrying two prophages
-     legitimately produces two VIBRANT rows, and 'first' picks one at
-     random — possibly assigning the wrong lifestyle. Now:
-         quality  -> the BEST of the rows
-         lifestyle-> lysogenic wins over lytic, because a prophage
-                     prediction is positive evidence and its absence is not
-     and both the number of collapsed rows and the number of conflicting
-     lifestyles are counted and printed.
-
-  3. Also adds Vibrant_predicted (Yes/No): whether VIBRANT called this
-     contig viral at all. That is one of the five independent lines of
-     evidence used by the catalogue filter in step 06, and it was being
-     inferred indirectly from the Quality string before.
+If a contig carries multiple prophages and generates multiple VIBRANT rows:
+  - Quality is assigned to the best available score.
+  - Lifestyle conflict (lytic vs. lysogenic) is resolved to lysogenic, 
+    as a prophage prediction constitutes positive evidence, whereas its absence does not.
 
 Output: votu_02_vibrant.tsv
 """
