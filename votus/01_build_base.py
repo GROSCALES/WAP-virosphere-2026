@@ -1,25 +1,16 @@
 #!/usr/bin/env python3
 """
-votus/01_build_base.py — one row per vOTU: identity, design, cluster, CheckV.
+votus/01_build_base.py — Base vOTU table: identity, design, cluster, and CheckV.
 
-Rebuild of 01_build_base_table.py, same logic, three things fixed:
+Constructs the level 1 table ensuring absolute reproducibility:
+  - Extracts the sampling design (Zone, Fraction, Fraction_group, MDA, Mitomycin) 
+    directly from sequence names via config.FRACTIONS.
+  - Traces clusters to identify provirus linkages and MAG origins, ensuring stable 
+    sorting so MAG taxonomy resolution is deterministic across runs.
+  - Integrates CheckV quality and completeness metrics.
 
-  1. REPRODUCIBILITY. The original did
-         ', '.join(list(set(mag_names)))
-     and Python randomises str hashing per process, so the order of
-     Cluster_MAG_origin could differ between runs. Since 04_add_phabox then
-     took .split(',')[0], MAG_GTDB_Lineage could change from one run to the
-     next without a single input changing. Now sorted(), and every MAG is
-     kept rather than silently picking one.
-
-  2. SAMPLING DESIGN AS DATA. The original had a single 'MDA' column whose
-     comment said "mitomycin-C induced" — two different variables under one
-     name. They are now three explicit columns driven by config.FRACTIONS:
-     Fraction_group, MDA, Mitomycin, plus Quantified_own (whether that
-     fraction's own reads entered CoverM at all).
-
-  3. COUNTERS. Unparsed names, vOTUs absent from the cluster file, vOTUs
-     absent from CheckV — all counted and reported. Nothing is lost quietly.
+Every potential fallback (e.g., vOTUs absent from the cluster file or CheckV) 
+is counted and reported. Nothing is lost quietly.
 
 Output: votu_01_base.tsv
 """
