@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
 """
-03_kegg_categories.py — Maps KOs to KEGG categories and measures ambiguity.
+genes/03_kegg_categories.py — KO -> KEGG category mapping, with ambiguity measured.
 
-A KO can belong to several KEGG pathways. The primary category is defined 
+A single KO can belong to several KEGG pathways and therefore to several 
+Metabolism categories. For example, K00171 sits in 8 pathways across 
+Carbohydrate, Energy, and Xenobiotics metabolism.
+
+To resolve this deterministically, the primary category for a KO is assigned 
 as the one in which the KO occurs in the GREATEST NUMBER OF DISTINCT PATHWAYS 
-(a property of the KO, not the pathway). Ties are broken by a declared list.
+(treating category assignment as a property of the KO itself, rather than 
+weighting by the total number of AMGs in a pathway). 
+
+Ties are resolved via a declared, reproducible hierarchical list (TIEBREAK). 
+Full categorical membership is never discarded and is written alongside the 
+primary assignment, allowing any gene to be traced to every category it belongs to.
+
+Output: ko_kegg_categories.tsv + a report measuring mapping ambiguity.
 """
 
 import os
