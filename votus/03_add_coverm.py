@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """
-"""
 votus/03_add_coverm.py — Abundance (TPM) from CoverM cross-mapping.
 
 Only CB22 (BAC) and GLI (CUL) reads were mapped: VIRFC (VIR) and LIS (LIS) are MDA-amplified and
