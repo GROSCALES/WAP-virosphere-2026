@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-Reconstructor de loci de defensa.
-Entrada : 07_long_table_FINAL.tsv  +  mapa_v4.tsv
-Salida  : 10_loci_defensa.tsv  (una fila por LOCUS, no por gen)
-Regla   : agrupa hits de defensa contiguos dentro de la ventana del mapa y
-          comprueba si estan los componentes que exige la literatura.
+10_loci_defensa.py — Locus Reconstructor for viral defence architectures.
+
+Input : 07_long_table_FINAL.tsv + data/mapa_v5.tsv
+Output: 10_loci_defensa.tsv (one row per LOCUS, not per gene)
+
+Rule  : Groups contiguous defence hits within the genomic window defined in 
+        the map (mapa_v5) and evaluates if the structural components required 
+        by the literature are present to form a complete architectural locus.
 """
 import pandas as pd, numpy as np, re, sys
 
@@ -12,9 +15,9 @@ LONG = sys.argv[1] if len(sys.argv)>1 else "07_long_table_FINAL.tsv"
 MAPA = sys.argv[2] if len(sys.argv)>2 else "data/mapa_v5.tsv"
 
 # ============================================================
-# 1. ARQUITECTURAS EN FORMATO MAQUINA
-#    sintaxis:  A + B + (C|D)      ->  todos los '+' obligatorios
-#               '-'                ->  sin requisito (efector/modulo autosuficiente)
+# 1. ARCHITECTURES IN MACHINE-READABLE FORMAT
+#    Syntax:  A + B + (C|D)      -> all '+' are mandatory
+#             '-'                -> no requirement (self-sufficient effector/module)
 # ============================================================
 ARQ = {
  'Gabija'      : r'GajA + GajB',
@@ -40,12 +43,13 @@ ARQ = {
  'RM Type II'  : r'(methyltransferas|methylas|MTase|\bDam\b|\bdcm\b) + (endonucleas|REase|restriction enzyme)',
  'RM Type III' : r'(Mod|methyltransferas) + (Res|endonucleas|restriction enzyme)',
  'RM Type I'   : r'(HsdR|hsdR) + (HsdM|hsdM) + (HsdS|hsdS)',
- 'RM Type IV'  : r'(McrB|McrC|Mrr|mcrA|mREase|RM_Type_IV)',          # NO exige MTasa
- 'RM Type IIG' : r'(RM_Type_IIG|Type IIG)',                          # fusionado
- 'CRISPR-Cas'  : r'(CRISPR array|crispr_array) + (cas\d|Cas\d)',     # sin array -> fragmento
+ 'RM Type IV'  : r'(McrB|McrC|Mrr|mcrA|mREase|RM_Type_IV)',          # MTase NOT required
+ 'RM Type IIG' : r'(RM_Type_IIG|Type IIG)',                          # Fused module
+ 'CRISPR-Cas'  : r'(CRISPR array|crispr_array) + (cas\d|Cas\d)',     # Missing array -> fragment
  'TA/Abi'      : r'(toxin|interferase|MazF|CcdB|YoeB|RelE|HigB|Zeta|DarT) + (antitoxin|MazE|CcdA|YefM|RelB|HigA|DarG)',
 }
-# familias normalizadas: como mapear el 'system' del mapa a una clave de ARQ
+
+# Normalized families: mapping map 'system' to an ARQ key
 NORM = [(r'Gabija|Gaj','Gabija'),(r'Thoeris|Ths','Thoeris'),(r'Hachiman|Ham','Hachiman'),
         (r'Septu|Ptu','Septu'),(r'Lamassu|Lmu','Lamassu'),(r'Wadjet|Jet','Wadjet'),
         (r'Zorya|Zor','Zorya'),(r'Menshen|Nsn','Menshen'),(r'Mza','Mza'),
@@ -64,22 +68,18 @@ def familia(system, cat_raw):
     return system
 
 def evalua(expr, texto, textos=None):
-    """devuelve (cumple, n_encontrados, n_requeridos, faltan[])
+    """
+    Returns (is_complete, n_observed, n_required, missing[])
 
-    REGLA DE GENES DISTINTOS. Cada termino POSITIVO lo tiene que aportar un
-    gen distinto del bloque. Sin esto, una etiqueta como
-    'Toxin_Antitoxin_and_Abi' satisface a la vez (toxin|...) y
-    (antitoxin|...) ella sola, y el locus sale completo aunque no exista
-    ninguna pareja toxina-antitoxina. Afectaba a 104 de 112 loci TA/Abi y a
-    los 8 de Druantia ('Druantia_II' contiene "DruA").
+    UNIQUE GENE REQUIREMENT (Bipartite Matching):
+    Each POSITIVE architectural term must be satisfied by a DISTINCT gene 
+    within the block (Kuhn's matching algorithm). This prevents a single 
+    multifunctional label from falsely satisfying multiple components 
+    simultaneously.
 
-    Las NEGACIONES se evaluan sobre el texto COMPLETO del bloque: la
-    ausencia tiene que darse en todo el vecindario, no en un gen suelto.
-    Por eso 'MTasa huerfana' no se ve afectada, y es correcto que no lo
-    este.
-
-    textos = lista con el texto de cada gen. Si no se pasa, se comporta
-    como antes (compatibilidad).
+    NEGATIONS:
+    Evaluated over the COMPLETE text of the block. The absence must hold 
+    across the entire genomic neighbourhood, not just a single gene.
     """
     if expr in ('-','', None): return True, 1, 1, []
     if textos is None: textos = [texto]
@@ -90,21 +90,21 @@ def evalua(expr, texto, textos=None):
 
     ok, faltan = 0, []
 
-    # --- negaciones: sobre todo el texto del bloque ---
+    # --- Negations: Evaluated against the entire block text ---
     for tk in neg:
         pat = tk[1:]
         pat = pat[1:-1] if pat.startswith('(') and pat.endswith(')') else pat
         if not re.search(pat, texto, re.I): ok += 1
-        else: faltan.append('NO debe estar: ' + tk)
+        else: faltan.append('Must NOT be present: ' + tk)
 
-    # --- positivos: cada uno de un gen distinto (emparejamiento de Kuhn) ---
+    # --- Positives: Bipartite matching (one distinct gene per term) ---
     cands = []
     for tk in pos:
         pat = tk[1:-1] if tk.startswith('(') and tk.endswith(')') else tk
         rx = re.compile(pat, re.I)
         cands.append([i for i, t in enumerate(textos) if rx.search(t)])
 
-    emparejado = {}          # gen -> indice de termino
+    emparejado = {}          # gene -> term index
     def intenta(i, visto):
         for g in cands[i]:
             if g in visto: continue
@@ -124,7 +124,7 @@ def evalua(expr, texto, textos=None):
     return ok == len(tokens), ok, len(tokens), faltan
 
 # ============================================================
-# 2. CARGA
+# 2. LOAD & PREP
 # ============================================================
 l = pd.read_csv(LONG, sep='\t', low_memory=False, keep_default_na=False)
 m = pd.read_csv(MAPA, sep='\t', keep_default_na=False)
@@ -149,7 +149,7 @@ def ventana(v):
     return (int(mg.group(1)) if mg else 10, (int(mk.group(1)) if mk else 20)*1000)
 
 # ============================================================
-# 3. AGRUPAR EN LOCI
+# 3. LOCUS AGGREGATION
 # ============================================================
 loci, lid = [], 0
 for ctg, sub in d.groupby('votu_id'):
@@ -174,26 +174,30 @@ for ctg, sub in d.groupby('votu_id'):
             lid += 1
             expr = ARQ.get(fam, '-')
             cumple, nok, nreq, faltan = evalua(expr, texto, textos)
-            # un perfil de COMPONENTE sin arquitectura definida no se auto-completa
+            
+            # A component profile without a defined architecture is not auto-completed
             nivel = str(fsub.nivel_entidad.mode().iat[0]) if 'nivel_entidad' in fsub else ''
             if expr == '-' and nivel == 'componente':
                 cumple, nok, nreq = False, 0, 1
-                faltan = ['arquitectura de sistema no reconstruida']
+                faltan = ['System architecture not reconstructed']
+            
             eje  = fsub.eje.mode().iat[0]
             borde = (blk.start_n.min() < 2000) or (pd.notna(blk.len_n.iat[0]) and blk.end.astype(float).max() > blk.len_n.iat[0]-2000)
-            # escision RM: un RM incompleto se resuelve segun que mitad tenga
+            
+            # RM Excision Logic: Incomplete RM systems are resolved based on the retained subunit
             reasignado = ''
             if not cumple and fam.startswith('RM Type'):
                 tiene_mt  = re.search(r'methyltransferas|methylas|MTase|\bDam\b|\bdcm\b|DNMT|MT-A70', texto, re.I)
                 tiene_nuc = re.search(r'endonucleas|REase|restriction enzyme|HsdR', texto, re.I)
                 if tiene_mt and not tiene_nuc:
-                    fam, eje_new, reasignado = 'MTasa huerfana', '1 Contra-defensa', 'RM incompleto -> MTasa huerfana'
+                    fam, eje_new, reasignado = 'MTasa huerfana', '1 Contra-defensa', 'Incomplete RM -> Orphan MTase'
                     expr = ARQ['MTasa huerfana']; cumple, nok, nreq, faltan = evalua(expr, texto, textos)
                 elif tiene_nuc and not tiene_mt:
-                    fam, eje_new, reasignado = 'Nucleasa putativa', '2 Defensa', 'RM incompleto -> nucleasa putativa'
+                    fam, eje_new, reasignado = 'Nucleasa putativa', '2 Defensa', 'Incomplete RM -> Putative Nuclease'
                     expr = ARQ['Nucleasa putativa']; cumple, nok, nreq, faltan = evalua(expr, texto, textos)
                 else: eje_new = None
                 if reasignado: eje = eje_new
+            
             if cumple:
                 comp, conf = 'completo', fsub.confianza_si_completo.mode().iat[0]
                 if reasignado: conf = 'candidata' if 'MTasa' in fam else 'media'
@@ -201,6 +205,7 @@ for ctg, sub in d.groupby('votu_id'):
                 comp, conf = 'fragmento (borde de contig)', 'media'
             else:
                 comp, conf = 'fragmento', fsub.confianza_si_aislado.mode().iat[0]
+            
             loci.append(dict(
                 locus_id=f'L{lid:05d}', contig_id=ctg, familia=fam, eje=eje,
                 subcategoria=fsub.subcategoria.mode().iat[0],
@@ -219,19 +224,19 @@ L = pd.DataFrame(loci)
 L.to_csv('10_loci_defensa.tsv', sep='\t', index=False)
 
 # ============================================================
-# 4. INFORME
+# 4. REPORT
 # ============================================================
-print('='*84); print(' RECONSTRUCCION DE LOCI')
-print(f'  genes de defensa de entrada : {len(d)}')
-print(f'  LOCI reconstruidos          : {len(L)}   en {L.contig_id.nunique()} contigs')
-print(f'  genes agrupados en loci     : {L.n_genes_locus.sum()}  (excluidos aparte)')
-print(f'  loci con >1 gen (colapso)   : {(L.n_genes_locus>1).sum()}')
-print(); print(' completitud:'); print(L.completitud_locus.value_counts().to_string())
-print(); print(' LAS DOS CIFRAS QUE NO SE SUMAN:')
+print('='*84); print(' LOCUS RECONSTRUCTION')
+print(f'  Input defence genes           : {len(d)}')
+print(f'  Reconstructed LOCI            : {len(L)}   across {L.contig_id.nunique()} contigs')
+print(f'  Genes aggregated into loci    : {L.n_genes_locus.sum()}  (exclusions reported separately)')
+print(f'  Loci with >1 gene (collapsed) : {(L.n_genes_locus>1).sum()}')
+print(); print(' Completeness Profile:'); print(L.completitud_locus.value_counts().to_string())
+print(); print(' DIAGNOSTIC METRIC (Confirmed vs Candidate):')
 print(L.metrica.value_counts().to_string())
-print(); print(' por eje:')
+print(); print(' Cross-tabulation by Axis:')
 print(pd.crosstab(L.eje, L.completitud_locus).to_string())
-print(); print(' familias multigenicas: cuantas reconstruyen?')
+print(); print(' Multigenic Families Reconstruction Rate:')
 t = L[L.n_componentes_requeridos>1].groupby('familia').agg(
     loci=('locus_id','size'), completos=('completitud_locus', lambda s:(s=='completo').sum()))
 t['%'] = (100*t.completos/t.loci).round(0)
