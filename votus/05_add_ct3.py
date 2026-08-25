@@ -1,24 +1,13 @@
 #!/usr/bin/env python3
 """
-votus/05_add_ct3.py — Cenote-Taker3 hallmarks, topology and taxonomy,
-plus the consolidated taxonomy call.
+votus/05_add_ct3.py — Cenote-Taker3 hallmarks, topology and taxonomy.
 
-Rebuild of 05_add_ct3.py. The original already audited its merge, which was
-good practice and is kept. What changes:
+Extracts hallmark genes (virion, replication, RDRP) and DTR/ITR topology 
+from CT3 output. These represent two of the five independent lines of 
+evidence used by the catalogue filter in step 06.
 
-  1. Taxonomy consolidation moves HERE, where both sources are finally in
-     the same table, instead of being buried inside the filtering step.
-     Keeping "decide" and "filter" in separate scripts is the whole point
-     of the restructure.
-
-  2. Whichever source wins is recorded in Taxonomy_Source. Before, the
-     final table showed a lineage with no way to tell whether it came from
-     CT3 or from PhaBOX, or how deep the other one was.
-
-  3. Every fallback is counted rather than silently applied.
-
-Hallmark genes (virion, replication, RDRP) and DTR/ITR topology are two of
-the five independent lines of evidence the catalogue filter uses in step 06.
+Consolidates taxonomy between CT3 and PhaBOX: the deepest assignment wins, 
+and the winning source is recorded in Taxonomy_Source for full traceability.
 
 Output: votu_05_ct3.tsv
 """
