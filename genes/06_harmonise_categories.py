@@ -1,35 +1,33 @@
 #!/usr/bin/env python3
 """
-genes/06_harmonise_categories.py — one vocabulary for the defence categories.
+genes/06_harmonise_categories.py — Unifies diverse defence annotations into a standard category vocabulary.
 
-Resolution chain, in order, for every raw label found in the gene table:
+Implements a deterministic resolution chain to map raw labels from different 
+tools (DefenseFinder, PADLOC, VIBRANT) into a single, cohesive ontology.
 
-  1. DEFENCE_EXCLUDE          -> dropped from defence, reason recorded
-  2. OWN_CATEGORIES           -> our SEARCH_TERMS labels; we know what they are
-  3. PADLOC sys/*.yaml        -> profile family -> component protein -> system
-                                 (case-insensitive: comparing literally failed
-                                 on cd09637 -> "Cas4" vs the yaml's "cas4")
-  4. sys_meta.txt name match  -> DefenseFinder names vs PADLOC yaml names
-  5. SYSTEM_TO_CATEGORY, matched by LONGEST PREFIX, case-insensitive, over
-     three candidates IN THIS ORDER:
-        a) the resolved system name
-        b) the PROTEIN names behind the profile, from hmm_meta
-        c) the raw label itself
+Resolution chain, in order:
+  1. DEFENCE_EXCLUDE          -> Excluded from defence tallies; reason recorded.
+  2. OWN_CATEGORIES           -> Explicitly defined SEARCH_TERMS labels.
+  3. PADLOC sys/*.yaml        -> Maps profile family -> component protein -> system 
+                                 (case-insensitive).
+  4. sys_meta.txt name match  -> Maps DefenseFinder names to PADLOC yaml system names.
+  5. SYSTEM_TO_CATEGORY       -> Matched by LONGEST PREFIX (case-insensitive) over 
+                                 three hierarchical candidates:
+                                    a) The resolved system name.
+                                    b) The PROTEIN names underlying the profile (from hmm_meta).
+                                    c) The raw label itself.
 
-Order (b) before (c) matters. Some PADLOC profiles are named after a raw
-database accession — cd09637, pfam13640, COG1468 — which carries no meaning,
-and matching those on their prefix sent 329 CRISPR-associated proteins
-(Cas4, 2OG) into "Uncharacterised". Their protein.name does carry meaning,
-so it is consulted first. Accession prefixes remain in the map only as a
-last resort.
+Hierarchical matching logic:
+Candidate (b) is evaluated before (c) to correctly resolve profiles named after 
+raw database accessions (e.g., cd09637, COG1468). Since accession numbers carry 
+no semantic meaning for prefix matching, their associated protein name (e.g., Cas4) 
+is prioritized. Candidate (c) acts as a final catch-all for tool-specific system 
+names (e.g., Gabija, CBASS) that lack external profile definitions.
 
-Order (c) is what catches DefenseFinder's own system names (Gabija, Lamassu,
-CBASS, Pycsar, UG9, DS-4...), which never appear in PADLOC's files at all.
+The biological rationale for the category vocabulary is documented in config.py 
+(Section 7b) to keep scientific decisions coupled with the configuration data.
 
-The reasoning behind the category vocabulary lives in config.py section 7b:
-it is a scientific decision, so it belongs with the data, in one place.
-
-Output: 06_category_map.tsv   (category_raw -> system -> category)
+Output: 06_category_map.tsv (category_raw -> system -> category)
 """
 
 import os
