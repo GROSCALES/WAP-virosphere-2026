@@ -1,39 +1,30 @@
 #!/usr/bin/env python3
 """
-04_score_context.py — genomic context, DRAM-v style, applied to EVERY ORF.
+genes/04_score_context.py — Computes genomic context (DRAM-v style) for every ORF.
 
-The old pipeline required >=1 viral-like neighbour anywhere within +/-10
-ORFs. In DRAM-v terms that is auxiliary score 4 (signal on one flank only),
-i.e. LOW confidence — and it was applied only to the regex-derived defence
-hits, never to the genes reclassified from VIBRANT's AMG list. Two evidence
-standards inside the same category.
+Genomic context is evaluated uniformly across the entire dataset to ensure that
+both auxiliary metabolic genes (AVGs) and defence genes are held to the exact
+same contextual standard.
 
-Here one rule is computed for every ORF in the table, so AVGs and defence
-genes are held to exactly the same criterion.
-
-DRAM-v auxiliary score (Shaffer et al. 2020, NAR 48:8883; the default of
-`DRAM-v distill` is Max auxiliary score: 3):
-
+DRAM-v auxiliary score (Shaffer et al. 2020, NAR 48:8883; max default: 3):
     1  hallmark gene on BOTH flanks                      high confidence
     2  hallmark on one flank, viral-like on the other    high confidence
     3  viral-like on BOTH flanks                         medium confidence
     4  signal on ONE flank only                          low
     5  no signal on either flank, or gene at contig end  discard
 
-Definitions used here, mirroring DRAM-v's two tiers:
+Definitions mirroring DRAM-v's two tiers:
+    hallmark   : a structural/virion keyword in any annotation field
+                 (e.g., capsid, terminase, portal, tail, baseplate, holin)
+    viral-like : the ORF has a VOG assignment
 
-    hallmark   : a structural/virion keyword in ANY name field
-                 (capsid, terminase, portal, tail, baseplate, holin, ...)
-    viral-like : the ORF has a VOG assignment at all
+Note on the 'VOG name' field: While VOG names describe viral reference proteins
+and are excluded from determining a gene's primary identity in this pipeline, 
+they are highly informative for evaluating whether a genomic neighbourhood 
+is viral in origin, and are therefore explicitly searched for context scoring.
 
-Note on which field is searched: for CONTEXT we deliberately do look at
-'VOG name'. That field is the description of a viral reference protein,
-which is exactly the wrong thing for deciding a gene's own identity (it
-caused every false-friend collision in the old pipeline) but exactly the
-right thing for asking "does this neighbourhood look viral?".
-
-Adds: n_hall_left, n_viral_left, n_hall_right, n_viral_right,
-      aux_score, at_contig_end, passes_context
+Added columns: n_hall_left, n_viral_left, n_hall_right, n_viral_right,
+               aux_score, at_contig_end, passes_context
 
 Input : 02_gene_table_L3_evidence.tsv
 Output: 03_gene_table_context.tsv
