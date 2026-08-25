@@ -1,36 +1,24 @@
 #!/usr/bin/env python3
 """
-votus/06_filter_catalog.py — the final catalogue, with the cascade audited.
+votus/06_filter_catalog.py — The final catalogue filter and cascade audit.
 
-Rebuild of 06_filter_final_catalog.py. Same three filters, same criteria,
-but:
+Applies the structural and evidence criteria to define the final viral catalogue:
+  1. Viral evidence: Must possess >=1 independent line of evidence (CheckV provirus, 
+     CT3 hallmark, VIBRANT prediction, PhaBOX prediction, or high CheckV quality).
+  2. Length/Topology: >= 10 kb (conservative) OR >= 5 kb (main) OR circular OR 
+     short but rescued (possesses both a hallmark and provirus linkage).
+  3. Domain: Exclusion of eukaryotic viruses and virophages.
 
-  1. THE LIFESTYLE LABEL IS HONEST NOW. The original returned
-         'Lysogenic (Integrase)'
-     whenever the string "temperate" or "lysogenic" appeared in VIBRANT's
-     or PhaBOX's prediction. No integrase was ever searched for. That label
-     asserts evidence that was never gathered, and it is the reason
-     Table S3 calls NODE_220 integrase-positive when it is a Mu-like
-     transposable phage with no integrase at all. Labels are now:
-         Temperate (integrated)  CheckV/cluster provirus — physical evidence
-         Temperate (predicted)   VIBRANT or PhaBOX prediction only
-         Lytic                   no temperate signal detected
-     plus Lifestyle_Source, so every call can be traced.
-     NOTE: "Lytic" means "no temperate signal was found", not "shown to be
-     lytic". State that in Methods.
+Lifestyle assignment follows a strict three-tier evidence hierarchy:
+  - Temperate (integrated): Physical evidence (CheckV/cluster provirus).
+  - Temperate (predicted): Algorithmic prediction (VIBRANT or PhaBOX).
+  - Lytic: No temperate signal detected (cannot strictly exclude pseudolysogeny).
 
-  2. NOTHING IS DROPPED FROM THE TABLE. The original deleted the very
-     columns it had used to filter, so the delivered catalogue could not be
-     re-audited. All evidence columns are kept, plus N_evidence and
-     Evidence_sources.
+Nothing is dropped from the table. The full table is kept with 'Passes_catalog' 
+and 'Conservative_10kb' boolean flags, so any filter can be revisited in R 
+without re-running the pipeline.
 
-  3. THE CASCADE IS REPORTED PROPERLY, including how much of the final
-     catalogue rests on a single line of evidence — the number a reviewer
-     will ask for.
-
-Output: votu_06_catalog.tsv  (flagged, not truncated: the full table is
-kept with a Passes_catalog column, so any filter can be revisited in R
-without re-running anything.)
+Output: votu_06_catalog.tsv 
 """
 
 import os
