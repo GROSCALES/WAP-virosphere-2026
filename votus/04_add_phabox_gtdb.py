@@ -2,23 +2,15 @@
 """
 votus/04_add_phabox_gtdb.py — PhaBOX taxonomy/host, and GTDB-Tk for MAGs.
 
-Rebuild of 04_add_phabox.py, with three things fixed:
+Integrates PhaBOX predictions (taxonomy, lifestyle, host) and GTDB-Tk 
+classifications for MAGs. Both bacterial and archaeal GTDB summaries are 
+read and concatenated to ensure archaeal MAGs retain their taxonomy.
 
-  1. ARCHAEA WERE BEING LOST. GTDB-Tk writes bacteria and archaea to
-     SEPARATE files (gtdbtk.bac120.summary.tsv, gtdbtk.ar53.summary.tsv).
-     The original read one 'gtdbtk.summary.tsv', so any archaeal MAG
-     silently ended up as 'Unknown_MAG_Tax'. Both are read and counted.
-
-  2. NO MORE PICKING THE FIRST MAG. The original did
-         str(mag_string).split(',')[0]
-     on a list whose order came from an unsorted set(), so the chosen MAG
-     could differ between runs. All MAGs are now resolved; if a vOTU maps
-     to several with DIFFERENT taxonomy the conflict is flagged in
-     MAG_tax_conflict rather than silently resolved.
-
-  3. PhaBOX 'filtered' / '-' values are normalised once, explicitly, and
-     counted — instead of being replaced in a loop over a hardcoded column
-     list that had to be kept in sync by hand.
+MAG conflict resolution: All MAGs linked to a vOTU are resolved. If a vOTU 
+maps to several MAGs with different taxonomies, the conflict is explicitly 
+flagged in MAG_tax_conflict. MAG-derived host predictions are prioritized 
+over PhaBOX database inferences, as they represent physically assembled 
+genomes from the same environment.
 
 Output: votu_04_phabox_gtdb.tsv
 """
