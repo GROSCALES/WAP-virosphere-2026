@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 """
-votus/01_build_base.py — Base vOTU table: identity, design, cluster, and CheckV.
+genes/01_build_gene_table.py — Build LEVEL 2 of the pipeline: one row per ORF.
 
-Constructs the level 1 table ensuring absolute reproducibility:
-  - Extracts the sampling design (Zone, Fraction, Fraction_group, MDA, Mitomycin) 
-    directly from sequence names via config.FRACTIONS.
-  - Traces clusters to identify provirus linkages and MAG origins, ensuring stable 
-    sorting so MAG taxonomy resolution is deterministic across runs.
-  - Integrates CheckV quality and completeness metrics.
+The spine is the Prodigal gene call over the full vOTU catalogue 
+(establishing ONE coordinate frame). VIBRANT annotations are layered 
+on top as distinct, independent columns to ensure annotation fields 
+(e.g., KO, Pfam, VOG) are never conflated during downstream parsing.
 
-Every potential fallback (e.g., vOTUs absent from the cluster file or CheckV) 
-is counted and reported. Nothing is lost quietly.
+Prophage Fragment Re-mapping:
+VIBRANT renames ORFs on excised prophages (e.g., <scaffold>_fragment_F_N).
+Since the N index already represents the true ORF number relative to the 
+parent contig (verified against the prophage coordinate file where 
+min(N) == 'protein start' and max(N) == 'protein stop'), this script 
+algorithmically remaps fragment ORFs back to their parent ID (<scaffold>_N). 
+This guarantees seamless identity tracking across the pipeline.
 
-Output: votu_01_base.tsv
+Output: 01_gene_table_L2.tsv
 """
 
 import os
