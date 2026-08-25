@@ -31,7 +31,7 @@ From `99_qc.py`. The manuscript copies these rather than re-deriving them.
 | vOTUs in the final catalogue | 11,100 |
 | supported by ≥ 2 lines of viral evidence | 10,671 (96.1%) |
 | conservative subset (≥ 10 kb or circular) | 3,810 |
-| auxiliary viral genes (AVG) | 1,441 |
+| auxiliary metabolic genes (AMG) | 1,441 |
 | defence-associated genes | 1,964 |
 | reconstructed defence loci | 1,718 |
 | complete defence loci | 808 |
@@ -92,10 +92,97 @@ requirements.txt  environment.txt  README.md  LICENSE
 All paths, thresholds and category definitions live in `config.py`. If any
 of them appears elsewhere, that is a bug.
 
+**Nomenclature.** The manuscript and the supplementary tables say **AMG**
+(auxiliary metabolic gene). Inside the code the same set of genes is called
+`AVG` (auxiliary viral gene), which is what the variable was named while
+the pipeline was written: `gene_class == "AVG"`, `n_AVG`, and the output
+filename `Table_S3_AVG_Defence_genes.tsv`. The relabel to AMG is applied
+once, in `08_build_supplementary_tables.py`, at the boundary between the
+pipeline and the reader. The internal names were left alone so that the
+code here is the code the results came from.
+
+The same applies to lifestyle. The tables report **Virulent**, following
+the convention that a *phage* is virulent or temperate while a *cycle* is
+lytic or lysogenic; the internal value is `Lytic`, which is what VIBRANT
+and PhaBOX return.
+
 Some scripts and the knowledge base were written in Spanish and are kept
 as they are, since that is the version the results came from.
 `data/mapa_v5_EN.tsv` is a column-for-column translation for reading; the
 pipeline reads the Spanish original.
+
+**On the comments.** Many comments record why a rule exists, including the
+counts from the audit that produced it and the cost of the decision. They
+are part of the documentation, not leftovers.
+
+---
+
+## Data flow
+
+Every step reads the previous step's table and writes a new, enriched one.
+Row counts are given where they are informative.
+
+### vOTU branch
+
+| Script | Reads | Writes |
+|---|---|---|
+| `votus/01_build_base.py` | representative FASTA, cluster file, CheckV summary | `votu_01_base.tsv` (59,469) |
+| `votus/02_add_vibrant.py` | `votu_01_base.tsv`, VIBRANT genome quality | `votu_02_vibrant.tsv` |
+| `votus/03_add_coverm.py` | `votu_02_vibrant.tsv`, CoverM TPM table | `votu_03_coverm.tsv` |
+| `votus/04_add_phabox_gtdb.py` | `votu_03_coverm.tsv`, PhaBOX summary, GTDB-Tk `bac120` + `ar53` | `votu_04_phabox_gtdb.tsv` |
+| `votus/05_add_ct3.py` | `votu_04_phabox_gtdb.tsv`, Cenote-Taker 3 summary | `votu_05_ct3.tsv` |
+| `votus/06_filter_catalog.py` | `votu_05_ct3.tsv` | `votu_06_catalog.tsv` (59,469 rows; 11,100 flagged `Passes_catalog`) |
+
+### Gene branch
+
+| Script | Reads | Writes |
+|---|---|---|
+| `08_defensas_votus.sh` | Prodigal `.faa` | PADLOC CSV + domtblout, DefenseFinder hmmer/genes/systems |
+| `genes/01_build_gene_table.py` | Prodigal GFF, VIBRANT annotations | `01_gene_table_L2.tsv` (393,330) |
+| `genes/02_add_evidence.py` | `01_gene_table_L2.tsv`, DefenseFinder, PADLOC | `02_gene_table_L3_evidence.tsv` |
+| `genes/03_kegg_categories.py` | KEGG pathway/KO tables | `03_ko_kegg_categories.tsv` (253) |
+| `genes/04_score_context.py` | `02_gene_table_L3_evidence.tsv` | `03_gene_table_context.tsv` |
+| `genes/05_classify.py` | `03_gene_table_context.tsv`, `03_ko_kegg_categories.tsv` | `04_gene_table_classified.tsv` |
+| `genes/06_harmonise_categories.py` | `04_gene_table_classified.tsv`, PADLOC `sys/*.yaml` + `hmm_meta.txt` | `06_category_map.tsv` (191 labels) |
+
+### Join, loci, tables and QC
+
+| Script | Reads | Writes |
+|---|---|---|
+| `07_join_and_report.py` | `votu_06_catalog.tsv`, `04_gene_table_classified.tsv`, `06_category_map.tsv` | `07_long_table_FINAL.tsv` (7,364), `07_votu_with_counts.tsv` (59,469) |
+| `reconstruir_loci.py` | `07_long_table_FINAL.tsv`, `data/mapa_v5.tsv` | `10_loci_defensa.tsv` (1,718) |
+| `08_build_supplementary_tables.py` | `07_votu_with_counts.tsv`, `07_long_table_FINAL.tsv` | `Table_S2_vOTU_catalogue.tsv` (11,100), `Table_S3_AVG_Defence_genes.tsv` (3,405) |
+| `98_audit_annotations.py` | `07_long_table_FINAL.tsv` | `98_audit_report.txt` |
+| `99_qc.py` | all of the above | `99_qc_report.txt` |
+
+### What feeds R
+
+| R script | Reads | Writes |
+|---|---|---|
+| `R/01_stats_F.R` | `07_votu_with_counts.tsv`, `07_long_table_FINAL.tsv` | `stats_results.tsv` |
+| `R/02_stats_loci_defence_F.R` | `10_loci_defensa.tsv`, `07_votu_with_counts.tsv`, `06_category_map.tsv` | `07_long_table_loci_for_fig3.tsv`, `votu_n_defence_loci.tsv`, `stats_results_loci_defence.tsv` |
+| `R/03_Fig2.R` | `07_votu_with_counts.tsv`, `stats_results.tsv` | Figure 2 (PNG, TIFF, EPS) |
+
+Figure scripts hard-code no statistic: test results are looked up from
+`stats_results.tsv` by section and test name, so rerunning the statistics
+updates the figure annotations automatically.
+
+### What feeds the supplementary tables
+
+| Table | Source |
+|---|---|
+| S1 — sequencing and assembly metrics | assembled by hand from the read-processing and QUAST reports |
+| S2 — vOTU catalogue | `08_build_supplementary_tables.py`, from `07_votu_with_counts.tsv` |
+| S3 — AMG and defence genes | `08_build_supplementary_tables.py`, from `07_long_table_FINAL.tsv` |
+| S4 — category assignment and references | curated; the citations also sit in `config.py` and `data/mapa_v5.tsv` |
+| S5 — defence loci | `10_loci_defensa.tsv` |
+| S6 — loci summarised per family | aggregation of S5 |
+| S7 — statistical results | `stats_results.tsv` from `R/01_stats_F.R` |
+| S8 — gene annotations for the genomic maps | Cenote-Taker 3 / Bakta, cross-checked against VIBRANT and PHASTEST |
+
+`08_build_supplementary_tables.py` checks that S3's per-vOTU row counts
+reconcile exactly with S2's `N_AMG_genes` and `N_Defence_genes` for all
+11,100 vOTUs, and fails loudly if they do not.
 
 ---
 
@@ -104,7 +191,7 @@ pipeline reads the Spanish original.
 | Script | What it does |
 |---|---|
 | `01_build_base.py` | Base table from the representative vOTU FASTA (source of truth for IDs). Parses the sampling design from sequence names into four columns (zone, fraction group, MDA, mitomycin), traces provirus and MAG origin from the cluster file, adds CheckV metrics. `Cluster_has_Provirus` is inherited if any cluster member is a CheckV provirus. |
-| `02_add_vibrant.py` | VIBRANT lifestyle, quality and `Vibrant_predicted`. Predictions on excised prophages (`<scaffold>_fragment_N`) are reassigned to the parent contig. Where a contig yields several predictions, quality takes the best row and lifestyle takes lysogenic over lytic. |
+| `02_add_vibrant.py` | VIBRANT lifestyle, quality and `Vibrant_predicted`. Predictions on excised prophages (`<scaffold>_fragment_N`) are reassigned to the parent contig. Where a contig yields several predictions, quality takes the best row and lifestyle takes lysogenic over lytic: a prophage prediction is positive evidence, its absence is not. |
 | `03_add_coverm.py` | Abundance (TPM), column names cleaned per zone and fraction. Only the two non-MDA libraries are used for quantification, but all vOTUs are measured, since libraries are cross-mapped against the whole catalogue. `In_CoverM` separates *absent from the abundance table* from *present but undetected*. |
 | `04_add_phabox_gtdb.py` | The four PhaBOX modules (PhaMer: viral; PhaGCN: taxonomy; PhaTYP: lifestyle; CHERRY: host) plus GTDB-Tk taxonomy for MAG-derived phages, reading both `bac120` and `ar53`. Host assignment follows a hierarchy recorded in `Host_Source`. |
 | `05_add_ct3.py` | Cenote-Taker 3 topology, taxonomy and hallmark counts, with merge auditing. Consolidates taxonomy across CT3 and PhaBOX by depth, recording the winner in `Taxonomy_Source`. |
@@ -114,10 +201,10 @@ pipeline reads the Spanish original.
 
 | Script | What it does |
 |---|---|
-| `01_build_gene_table.py` | ORF-level spine from the Prodigal GFF, with VIBRANT's annotation as separate columns (KO, Pfam, VOG, AMG flag) indexed by position, so each database keeps its own e-value and the AMG flag is a field. |
+| `01_build_gene_table.py` | ORF-level spine from the Prodigal GFF, with VIBRANT's annotation as separate columns (KO, Pfam, VOG, AMG flag) indexed by position, so each database keeps its own e-value and the AMG flag is read as a field. |
 | `02_add_evidence.py` | DefenseFinder and PADLOC results as evidence columns. Nothing is classified here: each tool keeps its own opinion in its own columns. PADLOC hits use PADLOC's per-profile thresholds from `hmm_meta.txt`. Also flags whether each hit belongs to a complete multi-gene system. |
-| `03_kegg_categories.py` | KO → KEGG category lookup for AVGs. A KO may belong to several categories; the primary one is where it occurs in the greatest number of distinct pathways, with a declared tie-break. Full membership is kept alongside. |
-| `04_score_context.py` | Genomic-context auxiliary score (viral hallmark genes within ±10 ORFs), computed for every ORF so AVGs and defence genes meet the same criterion. |
+| `03_kegg_categories.py` | KO → KEGG category lookup for AMGs. A KO may belong to several categories; the primary one is where it occurs in the greatest number of distinct pathways, with a declared tie-break. Full membership is kept alongside. |
+| `04_score_context.py` | Genomic-context auxiliary score (viral hallmark genes within ±10 ORFs), computed for every ORF so AMGs and defence genes meet the same criterion. |
 | `05_classify.py` | The single classification decision. Produces `gene_class`, `class_source` and the raw category label. |
 | `06_harmonise_categories.py` | Resolves each raw label to one of six mechanistic categories, trying the PADLOC system name, then the profile's protein names, then the label. Writes `06_category_map.tsv` with the route taken for every label. |
 
@@ -130,7 +217,7 @@ One precedence, all of it in `05_classify.py`:
 | 0 | core-function veto | evaluated once per protein, before any rule |
 | 1 | DefenseFinder or PADLOC assigned a defence system | `Defence` |
 | 2 | KO name or Pfam name matches `SEARCH_TERMS` | `Defence` |
-| 3 | VIBRANT AMG flag + KEGG lookup | `AVG` |
+| 3 | VIBRANT AMG flag + KEGG lookup | `AVG` (reported as AMG) |
 | 4 | — | `Other` |
 
 Patterns are matched only against KO and Pfam names, never against VOG
@@ -139,6 +226,12 @@ exists because the specialist tools model bacterial anti-phage systems and
 do not search for lysogenic conversion, superinfection exclusion, phage
 communication or SOS modulation.
 
+Rule 1 outranks rule 3 because a profile built on a described system is
+stronger evidence than a generic auxiliary-gene flag. In this dataset that
+reclassifies 579 genes that VIBRANT had flagged as metabolic, 94% of them
+DNA methyltransferases that a specialist places inside a
+restriction–modification system.
+
 **Core-function veto.** A defence assignment is rejected when the
 protein's own annotation identifies it as a core replication, repair or
 metabolic enzyme, or a prophage lifecycle regulator — DNA polymerase A,
@@ -146,7 +239,7 @@ primases, SNF2 and RecB-family helicases and preQ₀ enzymes all appear
 under defence labels. It is evaluated once, on the protein, before any
 rule dispatches, so that a protein with no specialist call cannot reach
 rule 2 unchecked. A vetoed protein falls through to rule 3 and is counted
-as an AVG. Every veto is recorded in `class_source` and exported in
+as an AMG. Every veto is recorded in `class_source` and exported in
 Table S3.
 
 ### Defence categories
@@ -202,7 +295,7 @@ genetic material.
 | Script | What it does |
 |---|---|
 | `07_join_and_report.py` | Joins both branches and applies the category map. Per-vOTU gene counts are derived here, once, by aggregation. Filtering is left to reporting time: the long table carries `Passes_catalog`, `Conservative_10kb` and `passes_context` as flags, so every sensitivity analysis is a `filter()` in R. |
-| `08_build_supplementary_tables.py` | Tables S2 (one row per vOTU) and S3 (one row per AVG/defence gene), checking that the two reconcile. |
+| `08_build_supplementary_tables.py` | Tables S2 (one row per vOTU) and S3 (one row per AMG/defence gene), checking that the two reconcile. Applies the AMG and Virulent presentation labels. |
 | `98_audit_annotations.py` | Audits every gene against its own annotation: no defence gene carrying a core-function identity, flags any whose annotation contains replication, repair, ribosomal or structural vocabulary, prints the full inventory of both sets. |
 | `99_qc.py` | Row counts preserved, no duplicate IDs, derived counts equal to their aggregation, flags correctly nested, category map complete — plus the manuscript numbers in one block. Exits non-zero on failure. |
 
@@ -215,10 +308,6 @@ genetic material.
 | `01_stats_F.R` | Alpha and beta diversity, Fisher, Wilcoxon and χ² with Benjamini–Hochberg, biogeography, completeness-versus-lifestyle bias control. Writes `stats_results.tsv`. |
 | `02_stats_loci_defence_F.R` | Defence statistics at **locus** level and the category reassignment. Runs between `reconstruir_loci.py` and the Figure 3 script; skipping it silently reverts Figure 3 to counting individual genes. |
 | `03_Fig2.R` | Fig. 2 — richness and abundance by fraction, Bray–Curtis PCoA and PERMANOVA, lifestyle, zone and fraction overlap, taxonomy, predicted host. |
-
-Figure scripts hard-code no statistic: results are looked up from
-`stats_results.tsv` by section and test name, so rerunning the statistics
-updates the annotations automatically.
 
 Genomic-map figures use representative genomes from the catalogue. Their
 boundaries, lengths, quality and taxonomy come from the pipeline, but ORF
@@ -280,11 +369,11 @@ loudly instead of producing plausible wrong numbers.
 | File | Contents |
 |---|---|
 | `votu_06_catalog.tsv` | all 59,469 representatives, flagged; 11,100 pass |
-| `07_long_table_FINAL.tsv` | one row per AVG/defence gene, with vOTU metadata and final category |
+| `07_long_table_FINAL.tsv` | one row per AMG/defence gene, with vOTU metadata and final category |
 | `07_votu_with_counts.tsv` | the vOTU table plus `n_orfs`, `n_AVG`, `n_Defence` |
 | `10_loci_defensa.tsv` | 1,718 defence loci, with axis, completeness and any reassignment |
-| `Table_S2_vOTU_catalogue.tsv` | Table S2 — 11,100 vOTUs |
-| `Table_S3_AVG_Defence_genes.tsv` | Table S3 — 3,405 genes (1,441 AVG + 1,964 defence) |
+| `Table_S2_vOTU_catalogue.tsv` | Table S2 — 11,100 vOTUs, with `N_AMG_genes` and `N_Defence_genes` |
+| `Table_S3_AVG_Defence_genes.tsv` | Table S3 — 3,405 genes (1,441 AMG + 1,964 defence) |
 | `06_category_map.tsv` | raw defence label → mechanistic category, with the route |
 | `98_audit_report.txt` | annotation audit |
 | `99_qc_report.txt` | consistency checks and the manuscript numbers |
