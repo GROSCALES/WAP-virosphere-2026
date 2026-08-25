@@ -1,40 +1,30 @@
 #!/usr/bin/env python3
-# =============================================================================
-# 08_build_supplementary_tables.py
-#
-# Builds the two clean, publication-ready supplementary tables from the
-# pipeline's own source of truth (07_votu_with_counts.tsv,
-# 07_long_table_FINAL.tsv). This is deliberately the LAST step of the
-# Python pipeline, not something built in R: R is for stats and figures,
-# and building "what counts as the final table" in a second language on a
-# second machine is exactly the kind of duplication that produced the
-# three-different-AMG-totals bug in the old Table S3. One producer, one
-# source of truth.
-#
-#   Table_S2_vOTU_catalogue.tsv     one row per vOTU that passes the catalog
-#   Table_S3_AVG_Defence_genes.tsv  one row per AVG/Defence gene that
-#                                   contributes to those vOTUs' n_AVG/n_Defence
-#
-# WHAT IS DELIBERATELY LEFT OUT (and why)
-#   - Per-sample TPM_ZONE_FRACTION columns in Table S2: collapsed into a
-#     single CPM_total. The full abundance matrix is useful but belongs in
-#     its own file if you want to publish it (say so and I'll add a
-#     Table_S_abundance_matrix.tsv), not bloating the main catalogue table.
-#   - Vetoed / excluded genes in Table S3: the veto logic and what got
-#     excluded and why lives in the pipeline code (05_classify.py,
-#     config.py's CORE_FUNCTION_REJECT), which is going to GitHub/Zenodo.
-#     Duplicating that trace into a giant supplementary table would make
-#     S3 unreadable for the one thing a reader actually needs it for:
-#     "what genes make up the numbers in Figure 3".
-#
-# CHECKS, so a wrong column pick fails loudly instead of silently
-#   - row count of Table_S3 grouped by (vOTU_ID, gene_class) sums back to
-#     exactly n_AVG / n_Defence in Table_S2 for every vOTU (the same
-#     invariant 99_qc.py already checks upstream; re-checked here because
-#     this script re-derives its own counts independently as a second,
-#     cheap verification).
-#   - no duplicate protein_id.
-# =============================================================================
+"""
+08_build_supplementary_tables.py — Generates publication-ready supplementary tables.
+
+Builds the final supplementary tables directly from the pipeline's verified 
+source of truth (07_votu_with_counts.tsv, 07_long_table_FINAL.tsv). Centralizing 
+this step in the Python pipeline ensures strict consistency before downstream 
+statistical analysis or plotting in R.
+
+  Table_S2_vOTU_catalogue.tsv    : One row per vOTU passing catalog criteria.
+  Table_S3_AVG_Defence_genes.tsv : One row per AVG/Defence gene contributing 
+                                   to the final counts in Table S2.
+
+Formatting Decisions:
+  - Abundance data: Per-sample TPM columns are collapsed into a single CPM_total 
+    to maintain catalog readability. The full abundance matrix is handled separately.
+  - Vetoed/Excluded genes: Genes rejected by the core-function veto are omitted 
+    from Table S3 to ensure the table accurately reflects the final counts (Figure 3). 
+    The comprehensive tracing of vetoed genes remains preserved in the intermediate 
+    pipeline outputs (04_gene_table_classified.tsv).
+
+Validation Checks (Fail-fast):
+  - Invariant Check: The row count of Table S3, grouped by (vOTU_ID, gene_class), 
+    must sum exactly to n_AVG and n_Defence in Table S2 for every vOTU. This acts 
+    as a secondary verification of upstream QA.
+  - Uniqueness: Asserts no duplicate protein_id exists in the final output.
+"""
 
 import os
 import pandas as pd
