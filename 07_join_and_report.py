@@ -1,40 +1,27 @@
 #!/usr/bin/env python3
 """
-07_join_and_report.py — join the two branches, apply the category map,
-and produce the tables R will plot.
+07_join_and_report.py — Joins the vOTU and gene branches to produce final reporting tables.
 
-    votus/06 -> one row per vOTU
-    genes/05 -> one row per ORF
-    genes/06 -> raw defence label -> harmonised category
+Inputs:
+  votus/06 -> Final vOTU catalog flags
+  genes/05 -> Gene classification (Defence, AVG, Other)
+  genes/06 -> Harmonised category map
 
 Outputs:
-    07_long_table_FINAL.tsv    one row per Defence/AVG gene with the full
-                               vOTU metadata and the final category
-    07_votu_with_counts.tsv    the vOTU table plus n_orfs, n_AVG, n_Defence
+  07_long_table_FINAL.tsv : One row per Defence/AVG gene with full vOTU metadata.
+  07_votu_with_counts.tsv : The vOTU table annotated with n_orfs, n_AVG, n_Defence.
 
-Per-vOTU gene counts are DERIVED here by aggregating the gene table. They
-are never computed a second time from a different source, which is what made
-the old master and long tables disagree and forced the manual patches in
-06a/06b.
-
-CATEGORIES ARE SYSTEM-LEVEL, NOT GENE-LEVEL. A gene is filed under the
-defence SYSTEM it belongs to, not under the biochemistry of the protein
-itself. This matters for restriction-modification: an RM system comprises a
-nucleolytic R subunit and a methyltransferase M subunit, and both are filed
-under the system's primary mechanism. So some methyltransferases (K00558
-assigned by PADLOC to RM Type II, for instance) appear under "Nucleic acid
-degradation". That is how PADLOC and DefenseFinder themselves report, and
-the alternative — splitting by subunit — is impossible for the generic
-'RM_Type_II' label, which carries no subunit information.
-
-    Figure legend must say:
-    "Categories reflect the defence system a gene belongs to, not the
-     biochemical activity of the individual gene; restriction-modification
-     systems comprise both nucleolytic and methyltransferase subunits."
-
-Filtering happens at REPORTING time, never upstream: the long table carries
-Passes_catalog, Conservative_10kb and passes_context as flags, so every
-sensitivity analysis is a filter() in R.
+Design Principles:
+1. Single Source of Truth for Counts: Per-vOTU gene counts are derived strictly 
+   by aggregating the gene table here. They are never computed independently 
+   to guarantee absolute synchrony between the long and wide formats.
+2. System-Level Categories: Categories reflect the defence SYSTEM a gene belongs to, 
+   not the isolated biochemical activity of the individual protein. For example, 
+   an RM system comprises both a nucleolytic R subunit and a methyltransferase M subunit; 
+   both are filed under the system's primary mechanism (Nucleic acid degradation).
+3. Downstream Filtering: Filtering happens at reporting time. The long table carries 
+   boolean flags (Passes_catalog, Conservative_10kb, passes_context) so sensitivity 
+   analyses can be seamlessly executed downstream in R.
 """
 
 import os
