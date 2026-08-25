@@ -2,39 +2,11 @@
 """
 01_build_gene_table.py — Build LEVEL 2 of the pipeline: one row per ORF.
 
-The spine is the prodigal gene call over the full vOTU catalogue
-(393,330 ORFs, ONE coordinate frame). VIBRANT annotations are layered on
-top as columns, never merged into a string.
-
-Two things this fixes for good:
-
-  1. The 18 VIBRANT columns are kept apart. Collapsing them with
-     " ".join(cols[2:]) was the root cause of the false-friend collisions
-     (VOG reference names bleeding into identity), of get_evalue() always
-     returning the KO e-value, and of detecting the AMG flag by regex.
-     The AMG flag is column 3. It is read as a field.
-
-  2. VIBRANT renames ORFs on excised prophages to <scaffold>_fragment_F_N,
-     which never matched <scaffold>_N and silently dropped 1,290 ORFs on
-     21 contigs. All six vOTUs that were being patched by hand in
-     06a/06b are on that list.
-
-     N is ALREADY the ORF number in the parent contig, not an index within
-     the fragment. Verified against the prophage coordinate file: for every
-     one of the 27 fragments, min(N) == 'protein start', max(N) ==
-     'protein stop', and count == stop - start + 1. So the translation is
-     simply to drop the _fragment_F infix:
-
-         <scaffold>_fragment_2_64   ->   <scaffold>_64
-
-     Adding 'protein start' as an offset (an earlier attempt) shifted every
-     ORF on fragments whose start was > 1. Those shifted IDs mostly still
-     EXISTED in the spine, so they passed an existence check while pointing
-     at the wrong gene — a silent mis-assignment. Hence the assertion in
-     load_fragment_offsets(): the mapping is only sound if the fragment ORF
-     numbers exactly fill the declared parent range.
-
-Output: 01_gene_table_L2.tsv
+The spine is the Prodigal gene call (ONE coordinate frame). 
+VIBRANT annotations are layered as distinct columns.
+Excised prophages (named <scaffold>_fragment_F_N by VIBRANT) are 
+algorithmically mapped back to their parent contig ID (<scaffold>_N) 
+to ensure gene tracking continuity.
 """
 
 import os
