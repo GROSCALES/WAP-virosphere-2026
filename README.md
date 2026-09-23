@@ -497,6 +497,26 @@ readers can apply it if they wish.
 - p-values below 1e-15 are reported from the test statistic rather than
   from R's floating-point floor of 2.22e-16.
 
+## Notes on the code as executed
+
+This repository publishes the code and the curated files as they were run. Two
+descriptions inside them do not match the paper, and neither changes a result.
+
+MADS in data/mapa_v5.tsv. The two MADS rows describe the family as a
+probable annotation artefact and cite a paper on plant MADS-box transcription
+factors. MADS is in fact a described eight-gene anti-phage system (Cell Host
+Microbe 2024, doi:10.1016/j.chom.2024.07.005). The decision those rows record
+is the one the paper applies and is unchanged — MADS is excluded from locus
+reconstruction and counted at gene level under genome modification — because
+no vOTU carries more than two of its components (37 genes in 36 vOTUs).
+
+Lines of viral evidence in votus/06_filter_catalog.py. As executed, any
+PhaBOX call counts as a line of evidence, including non-virus, so 99_qc.py
+prints 10,671 (96.1%) vOTUs with at least two lines. The counts reported in the
+paper are 10,771 (97.0%) supported by at least one tool besides VirSorter2,
+9,128 (82.2%) by at least two and 329 (3.0%) by VirSorter2 alone. The catalogue
+is unaffected: the count is descriptive and removes no vOTU.
+
 ## Data availability
 
 Raw reads: [BioProject accession]
