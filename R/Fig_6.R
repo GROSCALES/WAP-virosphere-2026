@@ -6,6 +6,8 @@
 #   * The title of panel b gives the vOTU length from Data S1 (42.8 kb), not
 #     the length of the contig (43.2 kb). Panel a was already correct.
 #   * MAPS_DIR: the absolute path lives in one variable now.
+#   * Panel b is titled Peduoviridae, the family Data S1 assigns to that vOTU;
+#     panel a has no family assignment and keeps the class.
 #
 # WHY THIS FIGURE EXISTS
 #   Figures 4 and 5 change two variables at once: Figure 4 is virulent and
@@ -133,9 +135,11 @@ tema_isme <- theme_minimal() + theme(
   plot.margin = margin(t = 12, r = 20, b = 16, l = 20)
 )
 
-ttl6 <- function(letter, name, kb, zone, frac, origin) {
+# Panel b carries a family-level assignment (Peduoviridae) and panel a does
+# not, so each title names the deepest rank that vOTU actually has.
+ttl6 <- function(letter, name, kb, zone, frac, origin, taxon = "Caudoviricetes") {
   bquote(bold(.(paste0(letter, " | Temperate "))) *
-           bolditalic("Caudoviricetes") *
+           bolditalic(.(taxon)) *
            bold(.(paste0(" \u00b7 ", name, " (", kb, " \u00b7 ", zone,
                          " \u00b7 ", frac, " \u00b7 ", origin, ")"))))
 }
@@ -261,7 +265,7 @@ pA <- base_panel(mapa_a, seq(0, 65000, 5000), c(0, 66500),
 
 GAJ_L <- 4947; GAJ_R <- 8860
 pB <- base_panel(mapa_b, seq(0, 43000, 5000), c(0, 44000),
-                 ttl6("b", NAME_b, "42.8 kb", "EL", "CUL", "culture-dependent")) +
+                 ttl6("b", NAME_b, "42.8 kb", "EL", "CUL", "culture-dependent", taxon = "Peduoviridae")) +
   # A bracket asserts that the system is complete, so it is drawn ONLY here:
   # L00454 is complete, confirmed, confidence high.
   annotate("segment", x = GAJ_L, xend = GAJ_R, y = 0.86, yend = 0.86, linewidth = 0.6) +
