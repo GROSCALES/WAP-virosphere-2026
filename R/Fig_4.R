@@ -294,7 +294,7 @@ p_legend <- ggplot(all_maps_combined, aes(xmin = start, xmax = end, y = 1, fill 
   geom_gene_arrow() + scale_fill_manual(values = paleta_global, drop = FALSE) +
   theme(legend.position = "bottom", legend.title = element_blank(),
         # 12 pt read fine on a 9.5-inch figure and small on this 16-inch one.
-        legend.text = element_text(size = 16, face = "bold"),
+        legend.text = element_text(size = 15, face = "bold"),
         legend.key.size = unit(1.0, "cm"),
         legend.spacing.x = unit(1.0, "cm"), legend.spacing.y = unit(0.5, "cm"),
         legend.box.margin = margin(t = 25, b = 25, l = 10, r = 10)) +
