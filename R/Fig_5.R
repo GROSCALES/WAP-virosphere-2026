@@ -2,13 +2,13 @@
 # 08_Fig5.R — Figure 5. Co-resident prophages in a Vibrio diabolicus MAG.
 # Successor of Fig5v3.R. Ready to run.
 #
-# CHANGES 23/9
+# CHANGES 23/9 (second pass: palette, type sizes, regulator)
 #   * Dam is coloured as nucleic acid degradation, the category Data S2 gives
 #     it and the category of the complete RM Type II locus it closes with the
 #     adjacent mcrA (L01512).
 #   * "mec" is labelled "C40 peptidase", as in Table S6 (KEGG K21140).
-#   * The HTH regulator is labelled "HTH reg.", so every row of Table S6 has
-#     its label in the figure.
+#   * The HTH regulator is left unlabelled (23/9, second pass) and its row was
+#     dropped from Table S6: it is not discussed anywhere in the paper.
 #   * MAPS_DIR: the absolute path lives in one variable now.
 #
 # WHAT CHANGED FROM Fig5v3.R — TWO THINGS, NEITHER TOUCHING THE DATA
@@ -121,11 +121,21 @@ source("palette_maps.R")
 categorias_globales <- MAP_CATEGORIES
 paleta_global       <- MAP_PALETTE
 
+# Type sizes match 07_Fig4.R and 09_Fig6.R: the three figures are 16 in wide,
+# so a size here is the same size on the page there.
+SZ_GENE  <- 4.6    # italic gene labels (Figs 4 and 6 use 5.0; this panel is
+                   # denser, and the anti-overlap levels below were widened)
+SZ_AXIS  <- 13
+SZ_TITLE <- 16
+SZ_NOTE  <- 3.8    # bracket captions, att labels
+
 tema_isme <- theme_minimal() + theme(
   panel.grid = element_blank(), axis.line.x = element_line(color = "black"),
   axis.text.y = element_blank(), axis.title.y = element_blank(),
-  axis.title.x = element_text(size = 11),
-  legend.position = "none", plot.title = element_text(face = "bold", size = 15),
+  axis.title.x = element_text(size = SZ_AXIS - 1),
+  axis.text.x = element_text(size = SZ_AXIS, colour = "grey20"),
+  axis.ticks.x = element_line(colour = "grey20", linewidth = 0.4),
+  legend.position = "none", plot.title = element_text(face = "bold", size = SZ_TITLE),
   plot.margin = margin(t = 10, r = 20, b = 15, l = 20)
 )
 
@@ -202,7 +212,6 @@ mapa_12 <- bind_rows(parse_gff3(path_gff3, "contig_1"), orfs_rescatados_c1) %>%
     Category = relabel_map(case_when(
       locus == "MANUAL_mcrA2"             ~ "Defense: Restriction Modification",
       tag %in% c("00056","00131","00133") ~ "Integration Machinery",
-      tag == "00064"                      ~ "Defense: Phage Communication",   # luxR-like, ver nota
       # Dam takes the category Data S2 gives it, "Nucleic acid degradation"
       # (PADLOC MTase_II), which is also the category of the locus it closes:
       # with the mcrA next to it, L01512 is a COMPLETE, confirmed RM Type II.
@@ -229,10 +238,10 @@ mapa_12 <- bind_rows(parse_gff3(path_gff3, "contig_1"), orfs_rescatados_c1) %>%
       # de identidad sobre 141 aa. Ni malT, ni LuxR de quorum sensing, ni
       # arbitrium. El color sigue mostrando que ahi hay un regulador; la
       # etiqueta afirmaba mas de lo que se puede sostener.
-      # Labelled as the neutral family name documented in Table S6, not as a
-      # gene name: Bakta gives it no gene name and blastp returns a Vibrio
-      # response regulator. The old "luxR" label asserted a system.
-      tag == "00064"          ~ "HTH reg.",
+      # _00064, the helix-turn-helix regulator, has no case of its own any
+      # more: it is not labelled, not coloured apart and not discussed, so it
+      # is drawn like any other annotated phage gene. Its row was removed from
+      # Table S6 for the same reason.
       tag == "00080"          ~ "Dam",
       tag == "00082"          ~ "mcrA",
       locus == "MANUAL_mcrA2" ~ "mcrA",
@@ -244,7 +253,7 @@ mapa_12 <- bind_rows(parse_gff3(path_gff3, "contig_1"), orfs_rescatados_c1) %>%
       TRUE ~ ""
     )
   ) %>%
-  asignar_niveles(min_dist = 3600)
+  asignar_niveles(min_dist = 4300)
 
 pA <- ggplot(mapa_12, aes(xmin = start, xmax = end, y = 1,
                           fill = Category, forward = direccion_hebra)) +
@@ -257,7 +266,7 @@ pA <- ggplot(mapa_12, aes(xmin = start, xmax = end, y = 1,
                inherit.aes = FALSE, color = "grey55", linewidth = 0.25) +
   geom_text(data = subset(mapa_12, label != ""),
             aes(x = midpoint, y = label_y, label = label),
-            inherit.aes = FALSE, hjust = 0.5, vjust = 0, size = 3.9, fontface = "italic") +
+            inherit.aes = FALSE, hjust = 0.5, vjust = 0, size = SZ_GENE, fontface = "italic") +
   annotate("segment", x = P12_START, xend = P12_START, y = 0.72, yend = 1.05,
            color = "grey40", linewidth = 0.8, linetype = "dotted") +
   annotate("segment", x = P12_END, xend = P12_END, y = 0.72, yend = 1.05,
@@ -265,7 +274,7 @@ pA <- ggplot(mapa_12, aes(xmin = start, xmax = end, y = 1,
   annotate("point", x = c(P12_START, P12_END), y = 0.80, shape = 25, size = 2.6,
            fill = "black", color = "black") +
   annotate("text", x = c(P12_START + 900, P12_END + 900), y = 0.755,
-           label = c("attL", "attR"), size = 2.9, fontface = "italic") +
+           label = c("attL", "attR"), size = SZ_NOTE, fontface = "italic") +
   annotate("segment", x = P12_START, xend = P12_END, y = 1.62, yend = 1.62, linewidth = 0.5) +
   annotate("segment", x = c(P12_START, P12_END), xend = c(P12_START, P12_END),
            y = 1.58, yend = 1.66, linewidth = 0.5) +
@@ -273,7 +282,7 @@ pA <- ggplot(mapa_12, aes(xmin = start, xmax = end, y = 1,
   # en cada uno (att vs. limite curado) se explica en la leyenda y en M&M.
   annotate("text", x = mean(c(P12_START, P12_END)), y = 1.70,
            label = paste0("Prophage region: ", SPAN_12_KB, " kb"),
-           size = 3.1, fontface = "italic") +
+           size = SZ_NOTE, fontface = "italic") +
   scale_x_continuous(breaks = seq(55000, 120000, 5000),
                      labels = function(x) paste0(x / 1000, " kb")) +
   coord_cartesian(xlim = VIEW_12, ylim = c(0.66, 1.80)) +
@@ -319,7 +328,7 @@ mapa_49 <- parse_gff3(path_gff3, "contig_13") %>%
       TRUE ~ ""
     )
   ) %>%
-  asignar_niveles(min_dist = 3000)
+  asignar_niveles(min_dist = 3600)
 
 MGE_START <- 74514   # _01346, primer gen tras el limite curado
 MGE_END   <- 76955   # _01350, 2a integrasa
@@ -335,7 +344,7 @@ pB <- ggplot(mapa_49, aes(xmin = start, xmax = end, y = 1,
                inherit.aes = FALSE, color = "grey55", linewidth = 0.25) +
   geom_text(data = subset(mapa_49, label != ""),
             aes(x = midpoint, y = label_y, label = label),
-            inherit.aes = FALSE, hjust = 0.5, vjust = 0, size = 3.9, fontface = "italic") +
+            inherit.aes = FALSE, hjust = 0.5, vjust = 0, size = SZ_GENE, fontface = "italic") +
   annotate("segment", x = P49_START, xend = P49_START, y = 0.72, yend = 1.05,
            color = "grey40", linewidth = 0.8, linetype = "dotted") +
   annotate("segment", x = P49_END, xend = P49_END, y = 0.72, yend = 1.05,
@@ -345,7 +354,7 @@ pB <- ggplot(mapa_49, aes(xmin = start, xmax = end, y = 1,
            y = 1.58, yend = 1.66, linewidth = 0.5) +
   annotate("text", x = mean(c(P49_START, P49_END)), y = 1.70,
            label = paste0("Prophage region: ", SPAN_49_KB, " kb"),
-           size = 3.1, fontface = "italic") +
+           size = SZ_NOTE, fontface = "italic") +
   # Corchete secundario, mas fino, para el elemento adyacente: lo situa sin
   # sugerir que forme parte del profago.
   annotate("segment", x = MGE_START, xend = MGE_END, y = 0.82, yend = 0.82,
@@ -353,7 +362,7 @@ pB <- ggplot(mapa_49, aes(xmin = start, xmax = end, y = 1,
   annotate("segment", x = c(MGE_START, MGE_END), xend = c(MGE_START, MGE_END),
            y = 0.79, yend = 0.85, linewidth = 0.4, color = "grey30") +
   annotate("text", x = mean(c(MGE_START, MGE_END)) + 900, y = 0.735,
-           label = "adjacent MGE", size = 2.9, fontface = "italic", color = "grey30") +
+           label = "adjacent MGE", size = SZ_NOTE, fontface = "italic", color = "grey30") +
   scale_x_continuous(breaks = seq(30000, 80000, 5000),
                      labels = function(x) paste0(x / 1000, " kb")) +
   coord_cartesian(xlim = VIEW_49, ylim = c(0.66, 1.80)) +
@@ -369,11 +378,11 @@ p_legend <- ggplot(bind_rows(mapa_12, mapa_49),
                    aes(xmin = start, xmax = end, y = 1, fill = Category)) +
   geom_gene_arrow() + scale_fill_manual(values = paleta_global, drop = FALSE) +
   theme(legend.position = "bottom", legend.title = element_blank(),
-        legend.text = element_text(size = 12, face = "bold"),
-        legend.key.size = unit(0.7, "cm"), legend.spacing.x = unit(0.5, "cm"),
-        legend.box.margin = margin(t = 15, b = 15)) +
-  guides(fill = guide_legend(nrow = 4, byrow = TRUE,
-                             keywidth = unit(0.9, "cm"), keyheight = unit(0.9, "cm")))
+        legend.text = element_text(size = 15, face = "bold"),
+        legend.key.size = unit(1.0, "cm"), legend.spacing.x = unit(0.8, "cm"),
+        legend.box.margin = margin(t = 18, b = 18)) +
+  guides(fill = guide_legend(ncol = 3, byrow = TRUE,
+                             keywidth = unit(1.0, "cm"), keyheight = unit(1.0, "cm")))
 
 # ggplot2 3.5 renamed the legend grob from "guide-box" to "guide-box-bottom".
 # The previous version indexed g$grobs by that name, so on a current install
