@@ -167,7 +167,7 @@ ttl <- function(letter, name, kb, zone, frac, extra = NULL) {
   tail <- paste0(" (", kb, " \u00b7 ", zone, " \u00b7 ", frac,
                  " \u00b7 culture-independent)")
   if (!is.null(extra)) tail <- paste0(tail, "  |  ", extra)
-  bquote(bold(.(paste0(letter, " | Virulent "))) *
+  bquote(bold(.(paste0(letter, "  Virulent "))) *
            bolditalic("Caudoviricetes") *
            bold(.(paste0(" \u00b7 ", name, tail))))
 }
@@ -196,7 +196,7 @@ pA <- ggplot(mapa_A, aes(xmin = start, xmax = end, y = 1,
                      labels = function(x) paste0(x / 1000, " kb")) +
   coord_cartesian(xlim = c(0, 32000), ylim = Y_MAP) +
   scale_fill_manual(values = paleta_global, drop = FALSE) +
-  tema_isme + labs(title = ttl("a", NAME_A, "29.2 kb", "DE", "BAC"))
+  tema_isme + labs(title = ttl("A", NAME_A, "29.2 kb", "DE", "BAC"))
 
 # --- vOTU B (101.7 kb) --------------------------------------------------------
 mapa_B <- parse_gbk(path_B) %>% mutate(
@@ -222,13 +222,13 @@ pB <- ggplot(mapa_B, aes(xmin = start, xmax = end, y = 1,
                      labels = function(x) paste0(round(x / 1000, 1), " kb")) +
   coord_cartesian(xlim = c(zoom_B_start, zoom_B_end), ylim = Y_MAP) +
   scale_fill_manual(values = paleta_global, drop = FALSE) +
-  tema_isme + labs(title = ttl("b", NAME_B, "101.7 kb", "DE", "VIR", "zoom"))
+  tema_isme + labs(title = ttl("B", NAME_B, "101.7 kb", "DE", "VIR", "zoom"))
 
 overview_B <- overview_bar(
   genome_len = max(mapa_B$end), name = NAME_B, kb_label = "101.7 kb",
   regions = list(c(zoom_B_start, zoom_B_end)),
   labels  = list(list(x = mean(c(zoom_B_start, zoom_B_end)),
-                      text = "region shown in b, below")))
+                      text = "region shown in B, below")))
 pB_full <- plot_grid(overview_B, pB, ncol = 1, rel_heights = c(0.46, 1))
 
 # --- vOTU C (126.7 kb) --------------------------------------------------------
@@ -273,15 +273,15 @@ map_C_panel <- function(brk, lims, letter, locus) {
     scale_fill_manual(values = paleta_global, drop = FALSE) +
     tema_isme + labs(title = ttl(letter, NAME_C, "126.7 kb", "MB", "BAC", locus))
 }
-pC1 <- map_C_panel(seq(0, 55000, 10000),     c(0, 56000),      "c", "locus 1")
-pC2 <- map_C_panel(seq(90000, 100000, 2000), c(90000, 100000), "d", "locus 2")
+pC1 <- map_C_panel(seq(0, 55000, 10000),     c(0, 56000),      "C", "locus 1")
+pC2 <- map_C_panel(seq(90000, 100000, 2000), c(90000, 100000), "D", "locus 2")
 
 genome_C_len <- max(mapa_C$end)
 overview_C <- overview_bar(
   genome_len = genome_C_len, name = NAME_C, kb_label = "126.7 kb",
   regions = list(c(0, 56000), c(90000, 100000)),
-  labels  = list(list(x = 28000, text = "locus 1, in c below"),
-                 list(x = 95000, text = "locus 2, in d below")))
+  labels  = list(list(x = 28000, text = "locus 1, in C below"),
+                 list(x = 95000, text = "locus 2, in D below")))
 # Panel d carries a single label against panel c's seven, so giving them equal
 # height left d as mostly blank paper.
 pC_full <- plot_grid(overview_C, pC1, pC2, ncol = 1, rel_heights = c(0.44, 1.15, 0.75))
@@ -318,40 +318,70 @@ stopifnot(!is.null(legend_final))
 figura_4_mapas <- plot_grid(pA, pB_full, pC_full, legend_final,
                             ncol = 1, rel_heights = c(1, 1.55, 2.35, 1.05))
 
-# ------------------------------------------------------------------------------
-# EXPORT — PNG for looking at, TIFF and EPS for the journal
+# ---------------------------------------------------------------------------
+# EXPORT - the four formats ISME accepts, named as they are cited.
 #
-# EPS via cairo_ps rather than the base postscript device, because the base one
-# cannot embed fonts or handle any transparency and silently drops what it
-# cannot draw. cairo_ps is a build-time option in R, so it is checked rather
-# than assumed: on a build without it the EPS is skipped with a message instead
-# of erroring after the other two files are already written.
+# ISME J, Author Guidelines > "Preparing your manuscript" > "Figures":
+#   "Figures should be submitted in one of the following file formats:
+#    .jpeg, .jpg, .png, .tiff, .pdf, or .eps."
+#   "Save vector images as .eps or .pdf files and embed the fonts."
+#   "Figure files should be named simply to match their citation
+#    (e.g., fig1.tiff, fig2.eps)."
 #
-# fallback_resolution only matters for objects cairo cannot express as vectors
-# (semi-transparent fills). There are none left in this figure, so nothing here
-# should rasterise; it is set anyway so that adding an alpha later degrades to
-# a 600-dpi bitmap rather than to a blank area.
-# ------------------------------------------------------------------------------
-save_all <- function(plot, base, w, h) {
-  ggsave(paste0(base, ".png"),  plot, width = w, height = h, dpi = 600, bg = "white")
-  ggsave(paste0(base, ".tiff"), plot, width = w, height = h, dpi = 600,
-         compression = "lzw", bg = "white")
-  if (isTRUE(capabilities("cairo"))) {
-    ggsave(paste0(base, ".eps"), plot, width = w, height = h,
-           device = cairo_ps, fallback_resolution = 600, bg = "white")
-    cat("  wrote ", base, ".png / .tiff / .eps\n", sep = "")
-  } else {
-    warning("This R build has no cairo support, so no EPS was written. ",
-            "Install R with cairo, or open the TIFF in Illustrator/Inkscape ",
-            "and export EPS from there.", call. = FALSE)
-    cat("  wrote ", base, ".png / .tiff  (EPS skipped: no cairo)\n", sep = "")
-  }
+# Everything lands in ONE folder, ISME_figs/, inside the working directory,
+# under the names the submission system expects: figN.pdf, .eps, .tiff, .png.
+# Nothing above this block was changed.
+#
+# type = "cairo" on the raster devices. THIS IS THE FIX FOR THE BROKEN TIFF.
+# ggsave() hands .tiff and .png to grDevices, which on Windows defaults to the
+# GDI device; that device gives up on very large rasters and writes a blank or
+# truncated file without erroring. Figure 2 is 16 x 14 in at 600 dpi = 9600 x
+# 8400 px, which is where it breaks. cairo has no such limit, and it
+# antialiases text the same way the PDF does.
+#
+# cairo_pdf, NOT pdf(): cairo EMBEDS the fonts, which is what the guideline
+# asks for. The base device only references them, and it would also fail to
+# render the bold / bold-italic mix in the bquote() titles.
+#
+# cairo_ps for EPS, NOT postscript(): the base one cannot embed fonts either.
+#
+# dpi is meaningless for PDF and EPS -- they have no pixels. Only width and
+# height in inches fix the printed size, and both are unchanged.
+# ---------------------------------------------------------------------------
+OUT <- file.path(getwd(), "ISME_figs")
+dir.create(OUT, showWarnings = FALSE)
+
+export_isme <- function(plot, n, w, h) {
+  if (!isTRUE(capabilities("cairo")))
+    stop("This R build has no cairo support. Fonts cannot be embedded and the\n",
+         "  large rasters will fail. Reinstall R with cairo before exporting.")
+  b <- file.path(OUT, paste0("fig", n))
+  ggsave(paste0(b, ".pdf"),  plot, width = w, height = h,
+         device = cairo_pdf, bg = "white")
+  ggsave(paste0(b, ".eps"),  plot, width = w, height = h,
+         device = cairo_ps, fallback_resolution = 600, bg = "white")
+  ggsave(paste0(b, ".tiff"), plot, width = w, height = h, dpi = 600,
+         compression = "lzw", bg = "white", type = "cairo")
+  ggsave(paste0(b, ".png"),  plot, width = w, height = h, dpi = 600,
+         bg = "white", type = "cairo")
+  cat("\n  ---------- fig", n, " ----------\n", sep = "")
+  for (e in c(".pdf", ".eps", ".tiff", ".png"))
+    cat(sprintf("    fig%d%-5s %8.2f MB\n", n, e,
+                file.size(paste0(b, e)) / 1e6))
+  cat("    folder: ", OUT, "\n", sep = "")
 }
 
-stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-save_all(figura_4_mapas, paste0("Figure_4_GenomicMaps_", stamp), 16, 13)
-save_all(figura_4_mapas, "Figure_4_GenomicMaps", 16, 13)
-cat("Send THIS file: Figure_4_GenomicMaps_", stamp, ".png\n", sep = "")
+export_isme(figura_4_mapas, 4, 16, 13)
+
+# Which palette_maps.R was actually loaded. Figures 4 and 5 read it from the
+# WORKING DIRECTORY; Figure 6 reads its own copy from MAPS_DIR. They are not
+# the same file, and that is why the three figures do not share a colour key.
+# Check this line against the figure already in your manuscript BEFORE you
+# upload anything.
+pal_tag <- if ("Structural and other phage genes" %in% names(MAP_PALETTE))
+             "NEW  (Structural and other phage genes / DGR retroelement)" else
+             "OLD  (Structural / viral assembly / Hypermutation (DGR))"
+cat("    palette loaded: ", pal_tag, "\n", sep = "")
 
 # ------------------------------------------------------------------------------
 # 6. WHAT IS ON EACH PANEL — printed so the legend text can be checked
