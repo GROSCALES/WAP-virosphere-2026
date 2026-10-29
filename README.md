@@ -43,8 +43,8 @@ From `99_qc.py`. The manuscript copies these rather than re-deriving them.
 | met the length criterion | 11,671 |
 | eukaryotic viruses and virophages removed | 571 |
 | vOTUs in the final catalogue | 11,100 |
-| supported by ≥ 1 tool besides VirSorter2 | 10,671 (96.1%) |
-| supported by VirSorter2 alone | 429 (3.9%) |
+| supported by ≥ 2 lines of evidence besides VirSorter2 | 10,671 (96.1%) |
+| supported by exactly one | 429 (3.9%) |
 | medium CheckV quality or better | 937 (8.4%) |
 | conservative subset (≥ 10 kb or complete) | 3,810 |
 | near-complete subset (gene-sharing network) | 363 |
