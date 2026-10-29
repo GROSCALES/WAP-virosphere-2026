@@ -1,14 +1,18 @@
 # WAP-virosphere
 
-Pipeline for the construction, curation, functional annotation and statistical analysis
-of a viral operational taxonomic unit (vOTU) catalogue from the Western Antarctic
-Peninsula, and the code behind every number and figure in the associated paper.
+This repository is the analysis record for one paper: the code as it was run, the
+curated files it reads, and the numbers it produced. It is not a maintained tool and
+it is not packaged for reuse.
+
+Raw inputs are not included, so the pipeline does not run end to end from here. What it
+does give is a complete and inspectable account of how every number and every figure in
+the paper was obtained, down to the decisions that were reversed and why.
 
 It is meant to be read alongside the Materials and Methods and the Supplementary
 Methods, whose section numbers are cited throughout.
 
-Raw inputs are not included, so the pipeline is not runnable end to end from this
-repository alone.
+Gabriel Roscales · Water Microbiology Related to Health group (MARS), University of
+Barcelona. Archived at submission, October 2026.
 
 ## The paper
 
@@ -77,9 +81,9 @@ an orphan methyltransferase under *Genome modification*.
 
 ## Notes on the code as executed
 
-This repository publishes the code and the curated files as they were run. One
-description inside them does not match the current literature, and it does not change a
-result.
+This repository publishes the code and the curated files as they were run. Two
+descriptions inside them do not match what is published, and neither changes a result.
+They are recorded here rather than silently corrected.
 
 **MADS in `data/mapa_v5.tsv`.** The two MADS rows describe the family as a probable
 annotation artefact and cite a paper on plant MADS-box transcription factors. MADS is in
@@ -88,6 +92,17 @@ doi:10.1016/j.chom.2024.07.005). The decision those rows record is the one the p
 applies and is unchanged — MADS is excluded from locus reconstruction and counted at
 gene level under genome modification — because no vOTU carries more than two of its
 components (37 genes in 36 vOTUs). Only the stated reason was wrong.
+
+**The two copies of `palette_maps.R`.** Figures 4 and 5 source the palette from the
+working directory; Figure 6 sources its own copy from `MAPS_DIR`. By the time the
+figures were produced the two had diverged: Figure 6's copy renames *Structural / viral
+assembly* to *Structural and other phage genes* and *Hypermutation (DGR)* to
+*Diversity-generating retroelement (DGR)*. Figure 6 therefore carries a different colour
+key from Figures 4 and 5, which is what its legend in the paper states. Both copies are
+included — `R/palette_maps.R` is the one Figures 4 and 5 used, `R/palette_maps_fig6.R`
+the one Figure 6 used — and each map script prints which one it loaded. To reproduce
+Figure 6 exactly, point `MAPS_DIR` at a folder holding that second file under the name
+`palette_maps.R`.
 
 ---
 
@@ -121,7 +136,9 @@ R/
   05_Fig_3.R                       Figure 3
   06_Fig_4.R  07_Fig_5.R  08_Fig_6.R   genomic maps
   09_supplementary_statistics.R    Tables S3 and S4 from the published data
-  palette_paper.R  palette_maps.R  colours and vocabulary, shared
+  palette_paper.R                  colours and vocabulary, Figures 2 and 3
+  palette_maps.R                   colours and vocabulary, Figures 4 and 5
+  palette_maps_fig6.R              the diverged copy Figure 6 was drawn with
 requirements.txt  environment.txt  README.md  LICENSE
 ```
 
@@ -147,9 +164,16 @@ Some scripts and the knowledge base were written in Spanish and are kept as they
 since that is the version the results came from. `data/mapa_v5_EN.tsv` is a
 column-for-column translation for reading; the pipeline reads the Spanish original.
 
-**On the comments.** Many comments record why a rule exists, including the counts from
-the audit that produced it and the cost of the decision. They are part of the
-documentation, not leftovers.
+**On the comments and the headers.** Many comments record why a rule exists, including
+the counts from the audit that produced it and the cost of the decision. Several script
+headers are dated change logs — what was altered on a given day, and what it replaced.
+Both are part of the documentation, not leftovers, and they are the reason this
+repository is worth reading at all: the reasoning behind a classification rule is harder
+to recover than the rule itself.
+
+Those headers sometimes name files that are not here (`Fig5v3.R`, `04_Fig_4_27_8.R`,
+"the old pipeline"). Earlier versions are not included. Those names are the record of
+what changed, not files to look for.
 
 ---
 
@@ -206,7 +230,7 @@ the code.
 | `R/03_stats_loci.R` | `10_loci_defensa.tsv`, `07_votu_with_counts.tsv`, `06_category_map.tsv` | `07_long_table_loci_for_fig3.tsv`, `votu_n_defence_loci.tsv`, `stats_results_loci_defence.tsv` |
 | `R/04_stats_fig3.R` | `07_votu_with_counts.tsv`, `07_long_table_FINAL.tsv`, `10_loci_defensa.tsv` | `stats_results_fig3.tsv`, `fig3_*.tsv`, `stats_report_fig3.txt` |
 | `R/05_Fig_3.R` | the four tables above plus the three `stats_results*.tsv` | Figure 3 |
-| `R/06_Fig_4.R`, `R/07_Fig_5.R`, `R/08_Fig_6.R` | GenBank and GFF3 files in `data/MAPAS/` | Figures 4, 5 and 6 |
+| `R/06_Fig_4.R`, `R/07_Fig_5.R`, `R/08_Fig_6.R` | GenBank and GFF3 files from the folder set in `MAPS_DIR` | Figures 4, 5 and 6 |
 | `R/09_supplementary_statistics.R` | Data S1, S2 and S3 as published (`.xlsx` or `.tsv`) | `supplementary_statistics.tsv`, `supplementary_statistics_categories.tsv` |
 
 Figure scripts hard-code no statistic: test results are looked up from the
@@ -375,7 +399,8 @@ Supplementary Methods S14–S15.
 | `05_Fig_3.R` | Figure 3, five panels. Looks up every statistic in the `stats_results*.tsv` files and refuses to draw crude odds ratios. |
 | `06_Fig_4.R`, `07_Fig_5.R`, `08_Fig_6.R` | The genomic maps. Gene categories are assigned by hand from the classification, the locus and the annotation, and are documented gene by gene inside each script. |
 | `09_supplementary_statistics.R` | Recomputes Supplementary Tables S3 and S4 from Data S1–S3 alone, in base R + MASS (plus `readxl` for `.xlsx` inputs). |
-| `palette_paper.R`, `palette_maps.R` | Colours, category names and factor orders, shared by the figures so the vocabulary cannot drift between them. |
+| `palette_paper.R` | Colours, category names and factor orders for Figures 2 and 3. |
+| `palette_maps.R`, `palette_maps_fig6.R` | The same for the genomic maps. Two files, not one: see *Notes on the code as executed*. Figures 4 and 5 use the first, Figure 6 the second, and the vocabulary differs between them. Each map script prints which it loaded. |
 
 Odds ratios for the category-level contrasts are **Cochran–Mantel–Haenszel**: origin and
 lifestyle are confounded in this design, so each contrast is estimated with the other
@@ -387,11 +412,17 @@ lengths, quality and taxonomy come from the pipeline, but ORF coordinates and ge
 are annotated separately with Cenote-Taker 3 or Bakta and cross-checked against VIBRANT
 and PHASTEST, so labels there are finer than the six mechanistic categories.
 
-Figures export PNG and TIFF (600 dpi, LZW).
+Each figure script writes PDF, EPS, TIFF (600 dpi, LZW) and PNG into an `ISME_figs/`
+folder under the working directory, named `fig2` to `fig6` to match how they are cited.
+The PDFs are fully vector with the fonts embedded; the EPS of Figure 2 rasterises the
+two semi-transparent boxplot panels, because EPS cannot carry transparency.
 
 ---
 
 ## Running it
+
+This is the order the scripts were run in, recorded for reference. Without the raw
+inputs it will not run from here.
 
 ```bash
 export PYTHONPATH=/path/to/pipeline
@@ -416,11 +447,14 @@ source("03_stats_loci.R")   # -> stats_results_loci_defence.tsv
 source("04_stats_fig3.R")   # -> stats_results_fig3.tsv
 source("05_Fig_3.R")        # -> Figure 3
 source("06_Fig_4.R"); source("07_Fig_5.R"); source("08_Fig_6.R")
+source("09_supplementary_statistics.R")
 ```
 
 The R scripts take their input names with or without the `_28_8` suffix the tables were
 exported with, and print which file they opened. The three map scripts read GenBank and
-GFF3 files from a folder set in one constant at the top of each (`MAPS_DIR`).
+GFF3 files from a folder set in one constant at the top of each (`MAPS_DIR`), which is
+an absolute local path and the only one in the R code; each script prints the working
+directory it actually used, because the palette is sourced relative to it.
 
 Every script prints input and output counts, filtering statistics and validation checks,
 so each stage can be verified on its own.
@@ -448,7 +482,11 @@ plausible wrong numbers.
 | `ct3/` | Cenote-Taker 3 virus summary |
 | `gtdbtk/` | GTDB-Tk `bac120` and `ar53` summaries |
 | `defence/` | DefenseFinder HMMER/systems/genes tables, PADLOC CSV and domtblout |
-| `data/MAPAS/` | GenBank and GFF3 for the genomic map figures |
+
+The GenBank and GFF3 files behind the genomic maps are not included either. They are
+read from whatever folder `MAPS_DIR` points at in `06_Fig_4.R`, `07_Fig_5.R` and
+`08_Fig_6.R`, which in the run that produced the published figures was a local directory
+outside this repository.
 
 ## Outputs
 
@@ -511,4 +549,13 @@ and is exported per gene so readers can apply it if they wish.
 - p-values below 1e-15 are reported from the test statistic rather than from R's
   floating-point floor of 2.22e-16.
 
+---
 
+## Licence and citation
+
+Code: MIT. Curated data files (`data/mapa_v5.tsv`, `data/mapa_v5_EN.tsv`): CC BY 4.0.
+See `LICENSE`.
+
+This repository is archived on Zenodo; cite the DOI there rather than the GitHub URL,
+since the DOI points at a fixed version. Data S1–S3 and the raw reads are distributed
+with the paper and through ENA (study accession PRJEB128412) respectively.
