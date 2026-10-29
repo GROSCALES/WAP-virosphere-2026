@@ -1,5 +1,5 @@
 # =============================================================================
-# 09_Fig6.R — Figure 6. Two temperate genomes, opposite fractions, opposite
+# 09_Fig6.R - Figure 6. Two temperate genomes, opposite fractions, opposite
 # arsenals. THE CONTROL FIGURE.
 #
 # CHANGES 23/9
@@ -71,7 +71,6 @@ library(cowplot)
 # One line to change for the repository: MAPS_DIR holds the two .gbf files and
 # palette_maps.R, and it is the only absolute path in the script.
 MAPS_DIR <- "C:/Users/gasch/Documents/R/vOTUs-R-V2"
-setwd(MAPS_DIR)
 
 path_a <- file.path(MAPS_DIR, "vOTU_viral_51405.gbf")   # MCHA-DE-14-VIRFC_NODE_3
 path_b <- file.path(MAPS_DIR, "vOTU_viral_7328.gbf")    # MCHA-EL-19-GLI_NODE_119
@@ -79,7 +78,19 @@ path_b <- file.path(MAPS_DIR, "vOTU_viral_7328.gbf")    # MCHA-EL-19-GLI_NODE_11
 NAME_a <- "MCHA-DE-14-VIRFC_NODE_3"
 NAME_b <- "MCHA-EL-19-GLI_NODE_119"
 
-source("palette_maps.R")
+# setwd(MAPS_DIR) USED TO BE HERE, and it is the one thing outside the export
+# block that changed. It did two harmful things and one necessary one:
+#   harmful  - it left the whole R session pointing at MAPS_DIR, so every
+#              script run afterwards looked for its tables, its palette and
+#              its output folder in the wrong place;
+#   harmful  - it sent this figure's files to MAPS_DIR instead of your R
+#              folder;
+#   necessary - it made source("palette_maps.R") below resolve to the copy
+#              in MAPS_DIR, which is THE PALETTE THIS FIGURE WAS DRAWN WITH.
+# The line below keeps the necessary part and drops the harmful parts: the
+# same palette file is read, by its full path, and the working directory is
+# left alone. The figure is pixel-identical to the one you approved.
+source(file.path(MAPS_DIR, "palette_maps.R"))
 paleta_global <- MAP_PALETTE
 
 SZ_GENE  <- 5.0
@@ -138,7 +149,7 @@ tema_isme <- theme_minimal() + theme(
 # Panel b carries a family-level assignment (Peduoviridae) and panel a does
 # not, so each title names the deepest rank that vOTU actually has.
 ttl6 <- function(letter, name, kb, zone, frac, origin, taxon = "Caudoviricetes") {
-  bquote(bold(.(paste0(letter, " | Temperate "))) *
+  bquote(bold(.(paste0(letter, "  Temperate "))) *
            bolditalic(.(taxon)) *
            bold(.(paste0(" \u00b7 ", name, " (", kb, " \u00b7 ", zone,
                          " \u00b7 ", frac, " \u00b7 ", origin, ")"))))
@@ -169,7 +180,7 @@ parse_gbk <- function(file) {
 }
 
 # ------------------------------------------------------------------------------
-# 3. GENE ASSIGNMENTS — coordinates taken from 07_long_table_FINAL_28_8.tsv
+# 3. GENE ASSIGNMENTS - coordinates taken from 07_long_table_FINAL_28_8.tsv
 #    Category names are the ones palette_maps.R already understands.
 # ------------------------------------------------------------------------------
 ann_a <- tribble(
@@ -253,7 +264,7 @@ base_panel <- function(m, brk, lims, title) {
 
 MT_L <- 17294; MT_R <- 21411          # the tandem methyltransferase array
 pA <- base_panel(mapa_a, seq(0, 65000, 5000), c(0, 66500),
-                 ttl6("a", NAME_a, "65.6 kb", "DE", "VIR", "culture-independent")) +
+                 ttl6("A", NAME_a, "65.6 kb", "DE", "VIR", "culture-independent")) +
   # A statement of ABSENCE cannot be drawn as a bracket, so it is written out.
   annotate("segment", x = MT_L, xend = MT_R, y = 0.86, yend = 0.86,
            linewidth = 0.5, colour = "grey30") +
@@ -265,7 +276,7 @@ pA <- base_panel(mapa_a, seq(0, 65000, 5000), c(0, 66500),
 
 GAJ_L <- 4947; GAJ_R <- 8860
 pB <- base_panel(mapa_b, seq(0, 43000, 5000), c(0, 44000),
-                 ttl6("b", NAME_b, "42.8 kb", "EL", "CUL", "culture-dependent", taxon = "Peduoviridae")) +
+                 ttl6("B", NAME_b, "42.8 kb", "EL", "CUL", "culture-dependent", taxon = "Peduoviridae")) +
   # A bracket asserts that the system is complete, so it is drawn ONLY here:
   # L00454 is complete, confirmed, confidence high.
   annotate("segment", x = GAJ_L, xend = GAJ_R, y = 0.86, yend = 0.86, linewidth = 0.6) +
@@ -276,7 +287,7 @@ pB <- base_panel(mapa_b, seq(0, 43000, 5000), c(0, 44000),
            size = SZ_NOTE, fontface = "italic", colour = "grey25")
 
 # ------------------------------------------------------------------------------
-# 5. VERIFICATION — read this before trusting the figure
+# 5. VERIFICATION - read this before trusting the figure
 # ------------------------------------------------------------------------------
 check <- function(m, ann, lab) {
   cat("\n---", lab, "---\n")
@@ -290,8 +301,8 @@ check <- function(m, ann, lab) {
                                   label = ifelse(label == "", "(unlabelled)", label),
                                   Category, product = substr(product, 1, 46))))
 }
-check(mapa_a, ann_a, "PANEL a — VIRFC_NODE_3")
-check(mapa_b, ann_b, "PANEL b — EL-GLI_NODE_119")
+check(mapa_a, ann_a, "PANEL A - VIRFC_NODE_3")
+check(mapa_b, ann_b, "PANEL B - EL-GLI_NODE_119")
 
 # ------------------------------------------------------------------------------
 # 6. LEGEND AND ASSEMBLY
@@ -320,20 +331,67 @@ figura_6 <- plot_grid(pA, pB, legend_final, ncol = 1, rel_heights = c(1, 1, 0.5)
 # ------------------------------------------------------------------------------
 # 7. EXPORT
 # ------------------------------------------------------------------------------
-save_all <- function(plot, base, w, h) {
-  ggsave(paste0(base, ".png"),  plot, width = w, height = h, dpi = 600, bg = "white")
-  ggsave(paste0(base, ".tiff"), plot, width = w, height = h, dpi = 600,
-         compression = "lzw", bg = "white")
-  if (isTRUE(capabilities("cairo"))) {
-    ggsave(paste0(base, ".eps"), plot, width = w, height = h,
-           device = cairo_ps, fallback_resolution = 600, bg = "white")
-    cat("  wrote ", base, ".png / .tiff / .eps\n", sep = "")
-  } else {
-    warning("No cairo in this R build: EPS skipped.", call. = FALSE)
-    cat("  wrote ", base, ".png / .tiff  (EPS skipped)\n", sep = "")
-  }
+# ---------------------------------------------------------------------------
+# EXPORT - the four formats ISME accepts, named as they are cited.
+#
+# ISME J, Author Guidelines > "Preparing your manuscript" > "Figures":
+#   "Figures should be submitted in one of the following file formats:
+#    .jpeg, .jpg, .png, .tiff, .pdf, or .eps."
+#   "Save vector images as .eps or .pdf files and embed the fonts."
+#   "Figure files should be named simply to match their citation
+#    (e.g., fig1.tiff, fig2.eps)."
+#
+# Everything lands in ONE folder, ISME_figs/, inside the working directory,
+# under the names the submission system expects: figN.pdf, .eps, .tiff, .png.
+# Nothing above this block was changed, apart from removing setwd(MAPS_DIR) at the top.
+#
+# type = "cairo" on the raster devices. THIS IS THE FIX FOR THE BROKEN TIFF.
+# ggsave() hands .tiff and .png to grDevices, which on Windows defaults to the
+# GDI device; that device gives up on very large rasters and writes a blank or
+# truncated file without erroring. Figure 2 is 16 x 14 in at 600 dpi = 9600 x
+# 8400 px, which is where it breaks. cairo has no such limit, and it
+# antialiases text the same way the PDF does.
+#
+# cairo_pdf, NOT pdf(): cairo EMBEDS the fonts, which is what the guideline
+# asks for. The base device only references them, and it would also fail to
+# render the bold / bold-italic mix in the bquote() titles.
+#
+# cairo_ps for EPS, NOT postscript(): the base one cannot embed fonts either.
+#
+# dpi is meaningless for PDF and EPS -- they have no pixels. Only width and
+# height in inches fix the printed size, and both are unchanged.
+# ---------------------------------------------------------------------------
+OUT <- file.path(getwd(), "ISME_figs")
+dir.create(OUT, showWarnings = FALSE)
+
+export_isme <- function(plot, n, w, h) {
+  if (!isTRUE(capabilities("cairo")))
+    stop("This R build has no cairo support. Fonts cannot be embedded and the\n",
+         "  large rasters will fail. Reinstall R with cairo before exporting.")
+  b <- file.path(OUT, paste0("fig", n))
+  ggsave(paste0(b, ".pdf"),  plot, width = w, height = h,
+         device = cairo_pdf, bg = "white")
+  ggsave(paste0(b, ".eps"),  plot, width = w, height = h,
+         device = cairo_ps, fallback_resolution = 600, bg = "white")
+  ggsave(paste0(b, ".tiff"), plot, width = w, height = h, dpi = 600,
+         compression = "lzw", bg = "white", type = "cairo")
+  ggsave(paste0(b, ".png"),  plot, width = w, height = h, dpi = 600,
+         bg = "white", type = "cairo")
+  cat("\n  ---------- fig", n, " ----------\n", sep = "")
+  for (e in c(".pdf", ".eps", ".tiff", ".png"))
+    cat(sprintf("    fig%d%-5s %8.2f MB\n", n, e,
+                file.size(paste0(b, e)) / 1e6))
+  cat("    folder: ", OUT, "\n", sep = "")
 }
-stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-save_all(figura_6, paste0("Figure_6_ControlMaps_", stamp), 16, 8.6)
-save_all(figura_6, "Figure_6_ControlMaps", 16, 8.6)
-cat("\nSend THIS file: Figure_6_ControlMaps_", stamp, ".png\n", sep = "")
+
+export_isme(figura_6, 6, 16, 8.6)
+
+# Which palette_maps.R was actually loaded. Figures 4 and 5 read it from the
+# WORKING DIRECTORY; Figure 6 reads its own copy from MAPS_DIR. They are not
+# the same file, and that is why the three figures do not share a colour key.
+# Check this line against the figure already in your manuscript BEFORE you
+# upload anything.
+pal_tag <- if ("Structural and other phage genes" %in% names(MAP_PALETTE))
+             "NEW  (Structural and other phage genes / DGR retroelement)" else
+             "OLD  (Structural / viral assembly / Hypermutation (DGR))"
+cat("    palette loaded: ", pal_tag, "\n", sep = "")
