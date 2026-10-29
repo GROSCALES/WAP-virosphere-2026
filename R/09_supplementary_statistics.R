@@ -2,22 +2,56 @@
 # 09_supplementary_statistics.R
 # Reproduces every test reported in Supplementary Tables S3 (Fig. 2) and S4
 # (Fig. 3) from the three data files distributed with the paper:
-#   Data S1 (vOTU catalogue), Data S2 (classified genes), Data S3 (loci).
-# Base R + MASS only. Community-level tests on the eight libraries
-# (Wilcoxon, PERMANOVA with exact p-values, betadisper) need the per-library
-# abundance matrix and are run in 01_stats.R.
+#   Data S1 (vOTU catalogue), Data S2 (classified genes), Data S3 (loci),
+#   either as distributed (.xlsx, sheet "Data") or exported to tab-separated text.
+# Base R + MASS, plus readxl only when the inputs are .xlsx. Community-level
+# tests on the eight libraries (Wilcoxon, PERMANOVA with exact p-values,
+# betadisper) need the per-library abundance matrix and are run in 01_stats.R.
+#
+# WRITES two files:
+#   supplementary_statistics.tsv             Table S3 and Table S4c
+#   supplementary_statistics_categories.tsv  Tables S4a and S4b (four analysis
+#                                            sets: main, >=10 kb or complete,
+#                                            context score <=3, no proviruses)
 # =============================================================================
 suppressMessages(library(MASS))
 
 args <- commandArgs(trailingOnly = TRUE)
-f_votu  <- if (length(args) >= 1) args[1] else "Data_S1_vOTU_catalogue.tsv"
-f_genes <- if (length(args) >= 2) args[2] else "Data_S2_classified_genes.tsv"
-f_loci  <- if (length(args) >= 3) args[3] else "Data_S3_defence_loci.tsv"
+guess <- function(stem) {                 # .xlsx as distributed, .tsv if exported
+  cand <- paste0(stem, c(".xlsx", ".tsv", ".txt"))
+  ok <- cand[file.exists(cand)]
+  if (!length(ok)) stop("Not found: ", paste(cand, collapse = " / "), call. = FALSE)
+  ok[1]
+}
+f_votu  <- if (length(args) >= 1) args[1] else guess("Data_S1_vOTU_catalogue")
+f_genes <- if (length(args) >= 2) args[2] else guess("Data_S2_classified_genes")
+f_loci  <- if (length(args) >= 3) args[3] else guess("Data_S3_defence_loci")
 f_out   <- if (length(args) >= 4) args[4] else "supplementary_statistics.tsv"
 
-v <- read.delim(f_votu,  stringsAsFactors = FALSE)
-g <- read.delim(f_genes, stringsAsFactors = FALSE)
-l <- read.delim(f_loci,  stringsAsFactors = FALSE)
+# -----------------------------------------------------------------------------
+# INPUT — Data S1-S3, as distributed (.xlsx, sheet "Data") or as plain text.
+# .xlsx needs the readxl package; nothing else in this script does.
+# -----------------------------------------------------------------------------
+read_data <- function(path) {
+  if (grepl("\\.xlsx?$", path, ignore.case = TRUE)) {
+    if (!requireNamespace("readxl", quietly = TRUE))
+      stop("Reading ", basename(path), " needs the readxl package.\n",
+           "  install.packages(\"readxl\")  -- or save its 'Data' sheet as a\n",
+           "  tab-separated .tsv and pass that instead.", call. = FALSE)
+    d <- as.data.frame(readxl::read_excel(path, sheet = "Data"),
+                       stringsAsFactors = FALSE)
+    # read_excel returns NA for empty cells and read.delim returns ""; the
+    # tests below compare strings, so the two are made identical here.
+    d[] <- lapply(d, function(col) if (is.character(col))
+      ifelse(is.na(col), "", col) else col)
+    d
+  } else {
+    read.delim(path, stringsAsFactors = FALSE)
+  }
+}
+v <- read_data(f_votu)
+g <- read_data(f_genes)
+l <- read_data(f_loci)
 stopifnot(nrow(v) == 11100, nrow(g) == 3405, nrow(l) == 1718)
 
 v$Frac   <- factor(v$Fraction, levels = c("VIR", "LIS", "BAC", "CUL"))
@@ -93,22 +127,48 @@ r <- fish(hq$Orig, hq$temp)
 add("S3_life", "Culture-dependent vs culture-independent, medium quality or better", "Fisher",
     sprintf("%d vs %d", sum(hq$Orig == "CD"), sum(hq$Orig == "CI")), r["est"], r["lo"], r["hi"], r["p"])
 
-# Without the 329 vOTUs supported by VirSorter2 alone (Supplementary Methods S5).
-# All 329 are virulent (no VIBRANT call, no provirus, rejected by PhaMer), so
-# removing them only lowers the virulent counts of their fractions:
-# BAC 193, VIR 128, LIS 5, CUL 3.
-VS2 <- c(BAC = 193, VIR = 128, LIS = 5, CUL = 3); stopifnot(sum(VS2) == 329)
+# Robustness: drop the 429 vOTUs with a SINGLE line of supporting evidence
+# besides VirSorter2 (Supplementary Methods S5).
+#
+# CORRECTED. The earlier version of this block removed 329 vOTUs, split
+# BAC 193 / VIR 128 / LIS 5 / CUL 3, and assumed all of them were virulent.
+# Counted directly in votu_06_catalog.tsv (Passes_catalog == "Yes",
+# N_evidence == 1) the set is 429, split BAC 258 / VIR 157 / LIS 10 / CUL 4,
+# and 29 of them are TEMPERATE (BAC 19, VIR 8, LIS 2), so both the temperate
+# and the virulent counts have to be reduced. The old block reduced only the
+# virulent ones.
+#
+# ON THE NAME. VirSorter2 is the baseline: every catalogue sequence was called
+# by it, and N_evidence counts the corroborating tools, which is why
+# Evidence_sources never mentions VirSorter2. "Supported by VirSorter2 alone"
+# would be N_evidence == 0, and there are none: all 11,100 carry
+# Has_evidence == "Yes". The 429 removed here are those with exactly one
+# corroborating tool (419 PhaBOX, 10 Provirus).
+#
+# The counts are written out because Data S1, which is all this script reads,
+# does not carry the evidence column. One line reproduces them from
+# votu_06_catalog.tsv:
+#   s <- t[t$Passes_catalog == "Yes" & t$N_evidence == 1, ]
+#   table(s$Fraction, grepl("^Temperate", s$Lifestyle))
+VS2_T <- c(BAC =  19, VIR =   8, LIS =  2, CUL = 0)   # temperate
+VS2_V <- c(BAC = 239, VIR = 149, LIS =  8, CUL = 4)   # virulent
+stopifnot(sum(VS2_T) + sum(VS2_V) == 429)
+
 tt <- table(v$Frac, v$temp)
 cnt <- function(fr, t) tt[fr, as.character(t)]
-dep_t <- cnt("CUL", TRUE) + cnt("LIS", TRUE); dep_v <- cnt("CUL", FALSE) + cnt("LIS", FALSE) - VS2["CUL"] - VS2["LIS"]
-ind_t <- cnt("BAC", TRUE) + cnt("VIR", TRUE); ind_v <- cnt("BAC", FALSE) + cnt("VIR", FALSE) - VS2["BAC"] - VS2["VIR"]
+dep_t <- cnt("CUL", TRUE)  + cnt("LIS", TRUE)  - VS2_T["CUL"] - VS2_T["LIS"]
+dep_v <- cnt("CUL", FALSE) + cnt("LIS", FALSE) - VS2_V["CUL"] - VS2_V["LIS"]
+ind_t <- cnt("BAC", TRUE)  + cnt("VIR", TRUE)  - VS2_T["BAC"] - VS2_T["VIR"]
+ind_v <- cnt("BAC", FALSE) + cnt("VIR", FALSE) - VS2_V["BAC"] - VS2_V["VIR"]
+stopifnot(dep_t + dep_v + ind_t + ind_v == 11100 - 429)
 ft <- fisher.test(matrix(c(ind_v, ind_t, dep_v, dep_t), 2, byrow = TRUE))
-add("S3_life", "Culture-dependent vs culture-independent, without VirSorter2-only vOTUs", "Fisher",
+add("S3_life", "Culture-dependent vs culture-independent, without single-evidence vOTUs", "Fisher",
     sprintf("%d vs %d", dep_t + dep_v, ind_t + ind_v), ft$estimate, ft$conf.int[1], ft$conf.int[2], ft$p.value)
-ft <- fisher.test(matrix(c(cnt("BAC", FALSE) - VS2["BAC"], cnt("BAC", TRUE),
-                           cnt("CUL", FALSE) - VS2["CUL"], cnt("CUL", TRUE)), 2, byrow = TRUE))
-add("S3_life", "CUL vs BAC, without VirSorter2-only vOTUs", "Fisher",
-    sprintf("%d vs %d", sum(tt["CUL", ]) - VS2["CUL"], sum(tt["BAC", ]) - VS2["BAC"]),
+ft <- fisher.test(matrix(c(cnt("BAC", FALSE) - VS2_V["BAC"], cnt("BAC", TRUE) - VS2_T["BAC"],
+                           cnt("CUL", FALSE) - VS2_V["CUL"], cnt("CUL", TRUE) - VS2_T["CUL"]), 2, byrow = TRUE))
+add("S3_life", "CUL vs BAC, without single-evidence vOTUs", "Fisher",
+    sprintf("%d vs %d", sum(tt["CUL", ]) - VS2_T["CUL"] - VS2_V["CUL"],
+                        sum(tt["BAC", ]) - VS2_T["BAC"] - VS2_V["BAC"]),
     ft$estimate, ft$conf.int[1], ft$conf.int[2], ft$p.value)
 
 vb <- v[v$Frac %in% c("BAC", "VIR"), ]; vb$Frac <- factor(vb$Frac, levels = c("BAC", "VIR"))
