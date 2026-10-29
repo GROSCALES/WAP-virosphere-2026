@@ -133,7 +133,7 @@ p_a <- ggplot(df_riq_frac, aes(x = Fraction_lbl, y = vOTUs)) +
   geom_jitter(aes(fill = Fraction), shape = 21, size = 3, stroke = 0.6,
               color = "black", width = 0.2) +
   scale_fill_manual(values = col_frac) +
-  labs(title = "a | Assembled vOTUs", y = "vOTUs", x = "") +
+  labs(title = "A | Assembled vOTUs", y = "vOTUs", x = "") +
   theme_pub + theme(legend.position = "none")
 
 # =============================================================================
@@ -151,7 +151,7 @@ p_b <- ggplot(df_tpm_frac, aes(x = Fraction_lbl, y = logTPM)) +
               color = "black", width = 0.2) +
   scale_fill_manual(values = col_frac) +
   scale_y_continuous(expand = expansion(mult = c(0.15, 0.15))) +
-  labs(title = "b | Mapped abundance", y = "log10(CPM+1)", x = "") +
+  labs(title = "B | Mapped abundance", y = "log10(CPM+1)", x = "") +
   theme_pub + theme(legend.position = "none")
 
 # =============================================================================
@@ -183,7 +183,7 @@ p_c <- ggplot(pcoa_coords, aes(x = PCoA1, y = PCoA2, fill = World_Mapped)) +
   scale_shape_manual(values = c(21, 22, 23, 24), name = "Station") +
   annotate("text", x = -Inf, y = Inf, label = annot_label, hjust = -0.05,
            vjust = 1.1, size = BASE_SIZE * 0.28, fontface = "italic") +
-  labs(title = "c | Community structure", x = "PCoA1", y = "PCoA2") +
+  labs(title = "C | Community structure", x = "PCoA1", y = "PCoA2") +
   theme_pub +
   guides(fill = guide_legend(override.aes = list(shape = 21, color = "black"),
                              order = 1), shape = guide_legend(order = 2)) +
@@ -215,7 +215,7 @@ p_d <- ggplot(life_counts, aes(x = World_Mapped, y = pct, fill = Life_Gen)) +
                           fmt_p(life_fisher$p)),
            size = BASE_SIZE * 0.27, fontface = "bold", vjust = 0,
            lineheight = 1.05) +
-  labs(title = "d | Lifestyles", y = "vOTUs %", x = "") +
+  labs(title = "D | Lifestyles", y = "vOTUs %", x = "") +
   theme_pub +
   theme(legend.position = "bottom",
         axis.text.x = element_text(size = BASE_SIZE - 3))
@@ -243,7 +243,7 @@ n_e1 <- nrow(df_upset_zones)
 p_e1 <- ggplot(df_upset_zones, aes(x = Zones)) +
   geom_bar(fill = "grey75", color = "black", linewidth = 0.3) +
   scale_x_upset(n_intersections = 15) +
-  labs(title = "e1 | Station overlap", y = "vOTUs", x = "") +
+  labs(title = "E | Station overlap", y = "vOTUs", x = "") +
   theme_pub +
   theme_combmatrix(combmatrix.panel.point.color.fill = "black",
                    combmatrix.label.text = element_text(size = BASE_SIZE - 2))
@@ -272,7 +272,7 @@ df_upset_fracs <- tibble(vOTU_ID = votu$vOTU_ID) %>% rowwise() %>%
 p_e2 <- ggplot(df_upset_fracs, aes(x = Fracs)) +
   geom_bar(fill = "grey75", color = "black", linewidth = 0.3) +
   scale_x_upset(n_intersections = 12) +
-  labs(title = "e2 | Fraction overlap", y = "vOTUs", x = "") +
+  labs(title = "F | Fraction overlap", y = "vOTUs", x = "") +
   theme_pub +
   theme_combmatrix(combmatrix.panel.point.color.fill = "black",
                    combmatrix.label.text = element_text(size = BASE_SIZE - 2))
@@ -294,7 +294,7 @@ p_f <- ggplot(df_tax_vir_agg, aes(x = Zone, y = TPM_sum, fill = Viral_Plot)) +
   facet_grid(World_Mapped ~ Life_Gen) +
   scale_fill_manual(values = c(brewer.pal(10, "Paired"), "grey70"),
                     name = "Viral Family") +
-  labs(title = "f | Viral taxonomy", y = "Relative abundance", x = "Station") +
+  labs(title = "G | Viral taxonomy", y = "Relative abundance", x = "Station") +
   theme_pub + theme(axis.title.x = element_text(margin = margin(t = 6)),
                     panel.spacing = unit(0.5, "lines"))
 
@@ -312,7 +312,7 @@ p_g <- ggplot(df_tax_host_agg, aes(x = Zone, y = TPM_sum, fill = Host_Plot)) +
   facet_grid(World_Mapped ~ Life_Gen) +
   scale_fill_manual(values = c(brewer.pal(10, "Set3"), "grey70"),
                     name = "Host Class") +
-  labs(title = "g | Predicted host", y = "Relative abundance", x = "Station") +
+  labs(title = "H | Predicted host", y = "Relative abundance", x = "Station") +
   theme_pub + theme(axis.title.x = element_text(margin = margin(t = 6)),
                     panel.spacing = unit(0.5, "lines"))
 
@@ -325,16 +325,67 @@ right_col <- (p_f / p_g) + plot_layout(heights = c(1, 1)) &
   theme(plot.margin = margin(t = 5, b = 10, l = 5, r = 5))
 final_plot <- (left_col | right_col) + plot_layout(widths = c(1.5, 1))
 
-stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-ggsave(file.path(folder, paste0("Fig2_Complete_", stamp, ".png")), final_plot,
-       width = 16, height = 14, dpi = 600, bg = "white")
-ggsave(file.path(folder, "Fig2_Complete.png"), final_plot,
-       width = 16, height = 14, dpi = 600, bg = "white")
-ggsave(file.path(folder, "Fig2_Complete.tiff"), final_plot,
-       width = 16, height = 14, dpi = 600, compression = "lzw", bg = "white")
-ggsave(file.path(folder, "Fig2_Complete.eps"), final_plot,
-       width = 16, height = 14, device = cairo_ps, fallback_resolution = 600)
-cat("Send THIS file: Fig2_Complete_", stamp, ".png\n", sep = "")
+# ---------------------------------------------------------------------------
+# EXPORT - the four formats ISME accepts, named as they are cited.
+#
+# ISME J, Author Guidelines > "Preparing your manuscript" > "Figures":
+#   "Figures should be submitted in one of the following file formats:
+#    .jpeg, .jpg, .png, .tiff, .pdf, or .eps."
+#   "Save vector images as .eps or .pdf files and embed the fonts."
+#   "Figure files should be named simply to match their citation
+#    (e.g., fig1.tiff, fig2.eps)."
+#
+# Everything lands in ONE folder, ISME_figs/, inside the working directory,
+# under the names the submission system expects: figN.pdf, .eps, .tiff, .png.
+# Nothing above this block was changed.
+#
+# type = "cairo" on the raster devices. THIS IS THE FIX FOR THE BROKEN TIFF.
+# ggsave() hands .tiff and .png to grDevices, which on Windows defaults to the
+# GDI device; that device gives up on very large rasters and writes a blank or
+# truncated file without erroring. Figure 2 is 16 x 14 in at 600 dpi = 9600 x
+# 8400 px, which is where it breaks. cairo has no such limit, and it
+# antialiases text the same way the PDF does.
+#
+# cairo_pdf, NOT pdf(): cairo EMBEDS the fonts, which is what the guideline
+# asks for. The base device only references them, and it would also fail to
+# render the bold / bold-italic mix in the bquote() titles.
+#
+# cairo_ps for EPS, NOT postscript(): the base one cannot embed fonts either.
+#
+# dpi is meaningless for PDF and EPS -- they have no pixels. Only width and
+# height in inches fix the printed size, and both are unchanged.
+# ---------------------------------------------------------------------------
+OUT <- file.path(getwd(), "ISME_figs")
+dir.create(OUT, showWarnings = FALSE)
+
+export_isme <- function(plot, n, w, h) {
+  if (!isTRUE(capabilities("cairo")))
+    stop("This R build has no cairo support. Fonts cannot be embedded and the\n",
+         "  large rasters will fail. Reinstall R with cairo before exporting.")
+  b <- file.path(OUT, paste0("fig", n))
+  ggsave(paste0(b, ".pdf"),  plot, width = w, height = h,
+         device = cairo_pdf, bg = "white")
+  ggsave(paste0(b, ".eps"),  plot, width = w, height = h,
+         device = cairo_ps, fallback_resolution = 600, bg = "white")
+  ggsave(paste0(b, ".tiff"), plot, width = w, height = h, dpi = 600,
+         compression = "lzw", bg = "white", type = "cairo")
+  ggsave(paste0(b, ".png"),  plot, width = w, height = h, dpi = 600,
+         bg = "white", type = "cairo")
+  cat("\n  ---------- fig", n, " ----------\n", sep = "")
+  for (e in c(".pdf", ".eps", ".tiff", ".png"))
+    cat(sprintf("    fig%d%-5s %8.2f MB\n", n, e,
+                file.size(paste0(b, e)) / 1e6))
+  cat("    folder: ", OUT, "\n", sep = "")
+}
+
+# WARNING, FIGURE 2 ONLY. Panels A and B use alpha = 0.5 in geom_boxplot().
+# EPS cannot carry transparency at all, so cairo_ps rasterises those two
+# boxplot areas at 600 dpi; the rest of the EPS stays vector. The PDF and the
+# TIFF are unaffected. Removing the alpha would make the EPS fully vector but
+# would change how the figure looks, so it is NOT done here. Submit the PDF or
+# the TIFF for this figure and the question does not arise.
+
+export_isme(final_plot, 2, 16, 14)
 
 # =============================================================================
 # 10) DESCRIPTIVE REPORT — the numbers the text may quote for this figure
@@ -400,4 +451,4 @@ print(as.data.frame(df_tpm %>% filter(Host_Class != "Unknown") %>%
                       arrange(World_Mapped, desc(TPM)) %>% group_by(World_Mapped) %>% slice_head(n = 3) %>%
                       mutate(Pct = round(100 * TPM / sum(TPM), 2))))
 
-cat("\nFig2 exported to:", folder, "\n")
+cat("\nFig2: the four files are in ", OUT, "\n", sep = "")
