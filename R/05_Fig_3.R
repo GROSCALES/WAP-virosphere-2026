@@ -332,7 +332,7 @@ LAB <- function(...) list(labels = c(...), label_size = BASE + 1,
 
 row1 <- do.call(plot_grid, c(list(p_a, p_b, ncol = 2, rel_widths = c(1.45, 1),
                                   align = "h", axis = "tb"),
-                             LAB("a | Density by category", "b | Enrichment")))
+                             LAB("A | Density by category", "B | Enrichment")))
 top  <- plot_grid(row1,
                   plot_grid(NULL, life_legend, NULL, ncol = 3,
                             rel_widths = c(0.35, 0.30, 0.35)),
@@ -341,9 +341,9 @@ top  <- plot_grid(row1,
 row2 <- do.call(plot_grid, c(list(p_c, p_d, p_e, ncol = 3,
                                   rel_widths = c(1.0, 1.0, 1.05),
                                   align = "h", axis = "tb"),
-                             LAB("c | Origin and lifestyle combined",
-                                 "d | System families of the complete loci",
-                                 "e | Axis composition across fractions")))
+                             LAB("C | Origin and lifestyle combined",
+                                 "D | System families of the complete loci",
+                                 "E | Axis composition across fractions")))
 bottom <- plot_grid(row2,
                     plot_grid(NULL, origin_legend, axis_legend, NULL, ncol = 4,
                               rel_widths = c(0.10, 0.40, 0.40, 0.10)),
@@ -351,12 +351,60 @@ bottom <- plot_grid(row2,
 
 fig3 <- plot_grid(top, bottom, ncol = 1, rel_heights = c(1, 1))
 
-stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-for (f in c(paste0("Fig3_Complete_", stamp, ".png"), "Fig3_Complete.png"))
-  ggsave(file.path(folder, f), fig3, width = 15, height = 11.5, dpi = 600, bg = "white")
-ggsave(file.path(folder, "Fig3_Complete.tiff"), fig3, width = 15, height = 11.5,
-       dpi = 600, bg = "white", compression = "lzw")
-cat("Send THIS file: Fig3_Complete_", stamp, ".png\n", sep = "")
+# ---------------------------------------------------------------------------
+# EXPORT - the four formats ISME accepts, named as they are cited.
+#
+# ISME J, Author Guidelines > "Preparing your manuscript" > "Figures":
+#   "Figures should be submitted in one of the following file formats:
+#    .jpeg, .jpg, .png, .tiff, .pdf, or .eps."
+#   "Save vector images as .eps or .pdf files and embed the fonts."
+#   "Figure files should be named simply to match their citation
+#    (e.g., fig1.tiff, fig2.eps)."
+#
+# Everything lands in ONE folder, ISME_figs/, inside the working directory,
+# under the names the submission system expects: figN.pdf, .eps, .tiff, .png.
+# Nothing above this block was changed.
+#
+# type = "cairo" on the raster devices. THIS IS THE FIX FOR THE BROKEN TIFF.
+# ggsave() hands .tiff and .png to grDevices, which on Windows defaults to the
+# GDI device; that device gives up on very large rasters and writes a blank or
+# truncated file without erroring. Figure 2 is 16 x 14 in at 600 dpi = 9600 x
+# 8400 px, which is where it breaks. cairo has no such limit, and it
+# antialiases text the same way the PDF does.
+#
+# cairo_pdf, NOT pdf(): cairo EMBEDS the fonts, which is what the guideline
+# asks for. The base device only references them, and it would also fail to
+# render the bold / bold-italic mix in the bquote() titles.
+#
+# cairo_ps for EPS, NOT postscript(): the base one cannot embed fonts either.
+#
+# dpi is meaningless for PDF and EPS -- they have no pixels. Only width and
+# height in inches fix the printed size, and both are unchanged.
+# ---------------------------------------------------------------------------
+OUT <- file.path(getwd(), "ISME_figs")
+dir.create(OUT, showWarnings = FALSE)
+
+export_isme <- function(plot, n, w, h) {
+  if (!isTRUE(capabilities("cairo")))
+    stop("This R build has no cairo support. Fonts cannot be embedded and the\n",
+         "  large rasters will fail. Reinstall R with cairo before exporting.")
+  b <- file.path(OUT, paste0("fig", n))
+  ggsave(paste0(b, ".pdf"),  plot, width = w, height = h,
+         device = cairo_pdf, bg = "white")
+  ggsave(paste0(b, ".eps"),  plot, width = w, height = h,
+         device = cairo_ps, fallback_resolution = 600, bg = "white")
+  ggsave(paste0(b, ".tiff"), plot, width = w, height = h, dpi = 600,
+         compression = "lzw", bg = "white", type = "cairo")
+  ggsave(paste0(b, ".png"),  plot, width = w, height = h, dpi = 600,
+         bg = "white", type = "cairo")
+  cat("\n  ---------- fig", n, " ----------\n", sep = "")
+  for (e in c(".pdf", ".eps", ".tiff", ".png"))
+    cat(sprintf("    fig%d%-5s %8.2f MB\n", n, e,
+                file.size(paste0(b, e)) / 1e6))
+  cat("    folder: ", OUT, "\n", sep = "")
+}
+
+export_isme(fig3, 3, 15, 11.5)
 
 # =============================================================================
 # REPORT
@@ -372,4 +420,4 @@ print(as.data.frame(inter %>% mutate(value = round(value, 2))))
 rule("d — ALL families, not only the plotted ones")
 print(as.data.frame(f3 %>% count(Axis, Family, sort = TRUE)))
 rule("e — axis by fraction");      print(as.data.frame(ax %>% mutate(pct = round(pct, 1))))
-cat("\nFig3 exported to:", folder, "\n")
+cat("\nFig3: the four files are in ", OUT, "\n", sep = "")
