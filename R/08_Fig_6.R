@@ -1,5 +1,5 @@
 # =============================================================================
-# 09_Fig6.R - Figure 6. Two temperate genomes, opposite fractions, opposite
+# 08_Fig6.R - Figure 6. Two temperate genomes, opposite fractions, opposite
 # arsenals. THE CONTROL FIGURE.
 #
 # CHANGES 23/9
