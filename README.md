@@ -507,6 +507,13 @@ apply it if they wish.
 - p-values below 1e-15 are reported from the test statistic rather than from R's
   floating-point floor of 2.22e-16.
 
+## A note on tooling
+
+Anthropic's Claude was used while preparing this repository, as a coding aid: debugging
+and refactoring scripts, cross-checking that the numbers reported in the paper match the
+tables they come from, and writing this documentation. Every analysis was designed, run
+and verified by the authors. This is also stated in the Acknowledgements of the paper.
+
 ---
 
 ## Licence and citation
