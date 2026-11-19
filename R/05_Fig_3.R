@@ -5,21 +5,41 @@
 #   01_stats.R  ->  03_stats_loci.R  ->  04_stats_fig3.R  ->  05_Fig_3.R
 #
 # FIVE PANELS
-#   a  Density per Mb by category, mirrored by origin, split by lifestyle.
-#      Defence counted as architecturally complete loci, AMGs as genes.
-#   b  Odds ratios on the same rows, two columns: origin, and lifestyle.
+#   a  Density per Mb by category, mirrored by culture dependence, split by
+#      lifestyle. Defence counted as architecturally complete loci, AMGs as
+#      genes.
+#   b  Odds ratios on the same rows, two columns: culture dependence, and
+#      lifestyle.
 #   c  The same contrast collapsed over categories.
 #   d  System families of the 773 complete loci, faceted by axis.
 #   e  Axis composition across fractions.
 #
+# VERSION 18/11. What changed over the 23/9 script:
+#   1. The word "origin" is gone from everything that reaches the figure, to
+#      match the manuscript, where the term was removed throughout. Panel c's
+#      title and in-panel annotation now say "culture dependence". The R
+#      variable is still called Origin, and so are the strings parsed out of
+#      the stats tables: those never print.
+#   2. Panel b's column headers say "adjusted for lifestyle" and "adjusted
+#      for fraction" instead of "within lifestyles" and "within fractions".
+#      "Within" invited the reading that fraction and culture dependence were
+#      the same variable. They are not: the contrast on the left has two
+#      levels (culture-dependent vs -independent), while the stratification
+#      on the right has four (VIR, LIS, BAC, CUL). "Adjusted for" is what a
+#      Mantel-Haenszel estimate actually does and cannot be misread.
+#   3. Two cosmetic fixes found on the rendered proof. The raw database
+#      string PhiR12.1_MorcDcm is spelled out in FAM_EN, and panel a's x
+#      axis asks for more breaks: pretty_breaks(6) gave only -5/0/5 on a
+#      range that reaches past 8, leaving the longest bar unreadable.
+#
 # VERSION 23/9. What changed over the 31/8 script:
 #   1. Panel b now states that its odds ratios are STRATIFIED. Since
 #      03_stats_loci.R and 04_stats_fig3.R switched to Mantel-Haenszel, the
-#      column headers read "within lifestyles" and "within fractions" and the
-#      x axis says Mantel-Haenszel, exactly as in Table S4a. A guard stops the
-#      script if it is handed the old crude-Fisher files.
-#   2. The two in-panel annotations are spelled out: "origin, given lifestyle"
-#      in c and "lifestyle, given fraction" in e. The bar "|" read as a pipe.
+#      column headers say so, and the x axis says Mantel-Haenszel, exactly as
+#      in Table S4a. A guard stops the script if it is handed the old
+#      crude-Fisher files.
+#   2. The two in-panel annotations are spelled out, in c and in e. The bar
+#      "|" read as a pipe.
 #   3. No absolute path. Set the working directory to the folder with the
 #      tables and source the file; input names are tried with and without the
 #      "_28_8" suffix.
@@ -125,6 +145,8 @@ if (!any(grepl("Mantel", S_LOCI$test[S_LOCI$section == "category enrichment (loc
 
 # =============================================================================
 # ODDS RATIOS — each source parsed on its own terms, then combined.
+# The string "Origin" below is the name used in the stats tables, not text
+# that reaches the figure. Do not rename it here.
 # =============================================================================
 MIN_CARRIERS <- 30
 
@@ -182,7 +204,7 @@ p_a <- ggplot(dens, aes(category_final, Plot, fill = Life)) +
   coord_flip(ylim = c(-xmax * 1.05, xmax * 1.05)) +
   facet_grid(Class ~ ., scales = "free_y", space = "free_y", switch = "y") +
   scale_fill_manual(values = col_life, name = "Lifestyle") +
-  scale_y_continuous(labels = abs, breaks = pretty_breaks(6),
+  scale_y_continuous(labels = abs, breaks = pretty_breaks(8),
                      expand = expansion(mult = c(0, 0))) +
   labs(x = NULL,
        y = "per Mb of assembled viral sequence\n← culture-independent          culture-dependent →") +
@@ -193,18 +215,21 @@ life_legend <- grab_legend(p_a + theme(legend.position = "bottom"))
 
 # =============================================================================
 # PANEL B — Defence from the loci statistics, AMG from the gene statistics.
-# Both are Mantel-Haenszel: each contrast with the other variable held
-# constant, which is what the column headers now say.
+# Both are Mantel-Haenszel: each contrast is computed within the levels of
+# the other variable and pooled, which is what the column headers say. The
+# left contrast has two levels; the right one is stratified by the FOUR
+# fractions, which is why the headers name the adjustment variable instead
+# of saying "within", a wording that made the two look like one variable.
 # =============================================================================
 fp <- ORS %>% filter(category_final %in% LEV) %>%
   mutate(q = ifelse(is.na(q), 1, q),
          category_final = factor(category_final, levels = LEV),
          Class = factor(Class, levels = c("Defence", "AMG")),
          Wing  = factor(ifelse(wing == "Origin",
-                               "Culture-dep. vs -indep.\n(within lifestyles)",
-                               "Temperate vs virulent\n(within fractions)"),
-                        levels = c("Culture-dep. vs -indep.\n(within lifestyles)",
-                                   "Temperate vs virulent\n(within fractions)")),
+                               "Culture-dep. vs -indep.\n(adjusted for lifestyle)",
+                               "Temperate vs virulent\n(adjusted for fraction)"),
+                        levels = c("Culture-dep. vs -indep.\n(adjusted for lifestyle)",
+                                   "Temperate vs virulent\n(adjusted for fraction)")),
          lo = pmax(lo, 0.08), hi = pmin(hi, 30),
          sig = q < 0.05, lab = paste0(sprintf("%.1f", OR), star(q)))
 stopifnot(nrow(fp) > 0)
@@ -225,7 +250,7 @@ p_b <- ggplot(fp, aes(OR, category_final)) +
         panel.grid.major.y = element_line(colour = "grey94"))
 
 # =============================================================================
-# PANEL C — origin x lifestyle, in counts per Mb
+# PANEL C — culture dependence x lifestyle, in counts per Mb
 # =============================================================================
 inter <- votu %>% group_by(Origin, Life) %>%
   summarise(Mb = sum(contig_length) / 1e6,
@@ -242,7 +267,8 @@ lr <- bind_rows(
     filter(section == "fraction vs lifestyle", grepl("n_AVG", comparison)) %>%
     slice(1) %>% transmute(Class = "AMG", p)) %>%
   mutate(Class = factor(Class, levels = c("Defence", "AMG")),
-         lab = paste0("origin, given lifestyle  ", ifelse(star(p) == "", "n.s.", star(p))))
+         lab = paste0("culture dependence, given lifestyle  ",
+                      ifelse(star(p) == "", "n.s.", star(p))))
 
 p_c <- ggplot(inter, aes(Life, value, fill = Origin)) +
   geom_col(position = position_dodge(0.72), width = 0.62,
@@ -250,7 +276,7 @@ p_c <- ggplot(inter, aes(Life, value, fill = Origin)) +
   geom_text(aes(label = sprintf("%.1f", value)), position = position_dodge(0.72),
             vjust = -0.35, size = SZ_NUM) +
   geom_text(data = lr, aes(x = 1.5, y = Inf, label = lab), inherit.aes = FALSE,
-            vjust = 1.5, size = SZ_SMALL, fontface = "italic", colour = "grey25") +
+            vjust = 1.5, size = SZ_SMALL * 0.92, fontface = "italic", colour = "grey25") +
   facet_wrap(~Class, scales = "free_y", nrow = 1) +
   scale_fill_manual(values = col_ori, name = NULL) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.30))) +
@@ -263,7 +289,8 @@ origin_legend <- grab_legend(p_c + theme(legend.position = "bottom"))
 # =============================================================================
 FAM_EN <- c("MTasa huerfana" = "Orphan methyltransferase",
             "Nucleasa putativa" = "Putative nuclease",
-            "DNA-modification systems (other)" = "DNA modification (other)")
+            "DNA-modification systems (other)" = "DNA modification (other)",
+            "PhiR12.1_MorcDcm" = "PhiR12.1 (Morc/Dcm)")
 f3 <- loci %>%
   filter(completitud_locus == "completo", eje %in% c("1 Contra-defensa", "2 Defensa")) %>%
   mutate(Axis   = factor(ifelse(eje == "1 Contra-defensa", "Self-protection", "Exclusion"),
@@ -341,7 +368,7 @@ top  <- plot_grid(row1,
 row2 <- do.call(plot_grid, c(list(p_c, p_d, p_e, ncol = 3,
                                   rel_widths = c(1.0, 1.0, 1.05),
                                   align = "h", axis = "tb"),
-                             LAB("C | Origin and lifestyle combined",
+                             LAB("C | Culture dependence and lifestyle",
                                  "D | System families of the complete loci",
                                  "E | Axis composition across fractions")))
 bottom <- plot_grid(row2,
@@ -363,18 +390,15 @@ fig3 <- plot_grid(top, bottom, ncol = 1, rel_heights = c(1, 1))
 #
 # Everything lands in ONE folder, ISME_figs/, inside the working directory,
 # under the names the submission system expects: figN.pdf, .eps, .tiff, .png.
-# Nothing above this block was changed.
 #
 # type = "cairo" on the raster devices. THIS IS THE FIX FOR THE BROKEN TIFF.
 # ggsave() hands .tiff and .png to grDevices, which on Windows defaults to the
 # GDI device; that device gives up on very large rasters and writes a blank or
-# truncated file without erroring. Figure 2 is 16 x 14 in at 600 dpi = 9600 x
-# 8400 px, which is where it breaks. cairo has no such limit, and it
-# antialiases text the same way the PDF does.
+# truncated file without erroring. cairo has no such limit, and it antialiases
+# text the same way the PDF does.
 #
 # cairo_pdf, NOT pdf(): cairo EMBEDS the fonts, which is what the guideline
-# asks for. The base device only references them, and it would also fail to
-# render the bold / bold-italic mix in the bquote() titles.
+# asks for. The base device only references them.
 #
 # cairo_ps for EPS, NOT postscript(): the base one cannot embed fonts either.
 #
@@ -415,7 +439,7 @@ rule("a — density per Mb");        print(as.data.frame(dens %>% mutate(per_Mb 
                                                          select(Class, category_final, Origin, Life, n, per_Mb) %>% arrange(Class, category_final)))
 rule("b — odds ratios plotted");   print(as.data.frame(fp %>% select(Class, category_final, Wing, OR, lo, hi, q) %>%
                                                          mutate(across(c(OR, lo, hi), ~round(.x, 2)), q = signif(q, 3))))
-rule("c — per Mb by origin and lifestyle")
+rule("c — per Mb by culture dependence and lifestyle")
 print(as.data.frame(inter %>% mutate(value = round(value, 2))))
 rule("d — ALL families, not only the plotted ones")
 print(as.data.frame(f3 %>% count(Axis, Family, sort = TRUE)))
