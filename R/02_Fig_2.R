@@ -1,6 +1,22 @@
 # =============================================================================
 # 02_Fig_2.R — Figure 2.
 #
+# CHANGES (18/11)
+#   1. Panel c: the PERMANOVA annotation now reads "Culture dependence"
+#      instead of "Origin", matching the manuscript, where the term "origin"
+#      has been removed throughout. The legend title is dropped altogether:
+#      "Culture-dependent" and "Culture-independent" need no heading, and a
+#      long title was being clipped at the left edge of the figure.
+#   2. Host classes are harmonised to a single taxonomy before plotting
+#      (section 0b). Host_Prediction merges three sources -- GTDB-Tk of the
+#      source MAG, CHERRY-GTDB and CHERRY-NCBI -- and the three do not use
+#      the same class names, so the same organism could appear under two
+#      labels in panel H. 73 vOTUs whose order is Flavobacteriales were
+#      labelled Bacteroidia (GTDB) while 910 identical ones were labelled
+#      Flavobacteriia (NCBI).
+#   3. New section 11: host-taxonomy audit, which re-checks the harmonised
+#      column and should now report a single scheme.
+#
 # CHANGES (22/9)
 #   1. Panel c: the PERMANOVA p-value is the exact one computed by 01_stats.R
 #      (all 35 partitions; p = 0.029), and the "Origin | Zone" line is gone.
@@ -78,6 +94,65 @@ votu <- votu %>%
                         "Unknown", gsub("c__", "", Host_Class))
   )
 
+# =============================================================================
+# 0b) HOST TAXONOMY HARMONISATION
+#
+#     Host_Prediction merges three sources: the GTDB-Tk taxonomy of the source
+#     MAG, the GTDB-based CHERRY prediction and the NCBI-based one. The three
+#     do not use the same class names, so without this step the same organism
+#     can appear twice in panel H under two labels.
+#
+#     1,571 of the 2,157 assignments (72.8%) come from the NCBI branch, so NCBI
+#     is the scheme with coverage and the GTDB- and MAG-derived minority is
+#     translated into it. The case that matters is Flavobacteriales: GTDB puts
+#     it inside Bacteroidia while NCBI gives it its own class, which was
+#     splitting 73 vOTUs away from the 910 already labelled Flavobacteriia.
+#
+#     Classes whose circumscription differs between the two schemes are
+#     resolved from the ORDER, which is the same in both. The rest are
+#     one-to-one synonyms observed in this dataset.
+# =============================================================================
+ORDER_TO_NCBI <- c(
+  "Flavobacteriales"   = "Flavobacteriia",
+  "Bacteroidales"      = "Bacteroidia",
+  "Cytophagales"       = "Cytophagia",
+  "Chitinophagales"    = "Chitinophagia",
+  "Sphingobacteriales" = "Sphingobacteriia",
+  "Burkholderiales"    = "Betaproteobacteria")
+
+GTDB_TO_NCBI <- c(
+  "Actinomycetes"        = "Actinobacteria",
+  "Cyanobacteriia"       = "Cyanophyceae",
+  "Campylobacteria"      = "Epsilonproteobacteria",
+  "Bacilli_A"            = "Mollicutes",
+  "Desulfobacteria"      = "Deltaproteobacteria",
+  "Desulfuromonadia"     = "Deltaproteobacteria",
+  "Desulfotomaculia"     = "Clostridia",
+  "Thermoanaerobacteria" = "Clostridia",
+  "Leptospirae"          = "Spirochaetia",
+  "Methanosarcinia"      = "Methanomicrobia")
+
+host_class_raw <- votu$Host_Class
+
+votu <- votu %>%
+  mutate(
+    Host_Order = str_extract(Host_Prediction, "o__[^;]+"),
+    Host_Order = ifelse(is.na(Host_Order), NA_character_, sub("o__", "", Host_Order)),
+    Host_Class = ifelse(
+      Host_Source != "PhaBOX_NCBI" &
+        Host_Class %in% c("Bacteroidia", "Gammaproteobacteria") &
+        Host_Order %in% names(ORDER_TO_NCBI),
+      unname(ORDER_TO_NCBI[Host_Order]), Host_Class),
+    Host_Class = ifelse(
+      Host_Source != "PhaBOX_NCBI" & Host_Class %in% names(GTDB_TO_NCBI),
+      unname(GTDB_TO_NCBI[Host_Class]), Host_Class))
+
+cat("\n  host classes relabelled: ", sum(host_class_raw != votu$Host_Class),
+    " of ", sum(votu$Host_Class != "Unknown"), "\n", sep = "")
+print(as.data.frame(tibble(before = host_class_raw, after = votu$Host_Class) %>%
+                      filter(before != after) %>% count(before, after, sort = TRUE)),
+      row.names = FALSE)
+
 df_tpm <- votu %>%
   pivot_longer(all_of(tpm_cols), names_to = "Sample", values_to = "TPM") %>%
   filter(TPM > 0) %>%
@@ -92,16 +167,16 @@ df_alpha <- df_tpm %>% group_by(Sample_Clean, World_Mapped) %>%
             .groups = "drop")
 
 # --- print the p-value 01_stats.R computed, not R's 2.2e-16 printing floor -
-SUP <- c("0"="\u2070","1"="\u00b9","2"="\u00b2","3"="\u00b3","4"="\u2074",
-         "5"="\u2075","6"="\u2076","7"="\u2077","8"="\u2078","9"="\u2079",
-         "-"="\u207b")
+SUP <- c("0"="⁰","1"="¹","2"="²","3"="³","4"="⁴",
+         "5"="⁵","6"="⁶","7"="⁷","8"="⁸","9"="⁹",
+         "-"="⁻")
 sup <- function(s) paste0(SUP[strsplit(as.character(s), "")[[1]]], collapse = "")
 fmt_p <- function(p) {
   if (is.na(p)) return("NA")
   if (p >= 0.001) return(sprintf("p = %.3f", p))
-  if (p == 0)   return("p < 1 \u00d7 10\u207b\u00b3\u2070\u2070")
+  if (p == 0)   return("p < 1 × 10⁻³⁰⁰")
   e <- floor(log10(p)); m <- p / 10^e
-  paste0("p = ", sprintf("%.1f", m), " \u00d7 10", sup(e))
+  paste0("p = ", sprintf("%.1f", m), " × 10", sup(e))
 }
 
 # =============================================================================
@@ -156,6 +231,9 @@ p_b <- ggplot(df_tpm_frac, aes(x = Fraction_lbl, y = logTPM)) +
 
 # =============================================================================
 # 4) PANEL C
+#    "Origin" replaced by "Culture dependence" in the annotation, and the
+#    legend title dropped: the two labels are self-explanatory and a long
+#    title was clipped at the left edge.
 # =============================================================================
 otu_table <- df_tpm %>% select(Sample_Clean, vOTU_ID, TPM) %>%
   pivot_wider(names_from = vOTU_ID, values_from = TPM, values_fill = 0) %>%
@@ -171,14 +249,15 @@ perm_naive <- stats %>% filter(section == "beta diversity",
                                test == "PERMANOVA (bray)") %>% slice(1)
 
 annot_label <- paste0(
-  "PERMANOVA (Bray\u2013Curtis)\n",
-  "Origin: R\u00b2 = ", sprintf("%.3f", perm_naive$estimate), ", ", fmt_p(perm_naive$p))
+  "PERMANOVA (Bray–Curtis)\n",
+  "Culture dependence: R² = ", sprintf("%.3f", perm_naive$estimate), ", ",
+  fmt_p(perm_naive$p))
 
 p_c <- ggplot(pcoa_coords, aes(x = PCoA1, y = PCoA2, fill = World_Mapped)) +
   stat_ellipse(aes(color = World_Mapped), type = "t", linetype = 2,
                level = 0.95, show.legend = FALSE) +
   geom_point(aes(shape = Zone), size = 4, color = "black", stroke = 0.7) +
-  scale_fill_manual(values = col_ori, name = "Origin") +
+  scale_fill_manual(values = col_ori, name = NULL) +
   scale_color_manual(values = col_ori) +
   scale_shape_manual(values = c(21, 22, 23, 24), name = "Station") +
   annotate("text", x = -Inf, y = Inf, label = annot_label, hjust = -0.05,
@@ -326,34 +405,7 @@ right_col <- (p_f / p_g) + plot_layout(heights = c(1, 1)) &
 final_plot <- (left_col | right_col) + plot_layout(widths = c(1.5, 1))
 
 # ---------------------------------------------------------------------------
-# EXPORT - the four formats ISME accepts, named as they are cited.
-#
-# ISME J, Author Guidelines > "Preparing your manuscript" > "Figures":
-#   "Figures should be submitted in one of the following file formats:
-#    .jpeg, .jpg, .png, .tiff, .pdf, or .eps."
-#   "Save vector images as .eps or .pdf files and embed the fonts."
-#   "Figure files should be named simply to match their citation
-#    (e.g., fig1.tiff, fig2.eps)."
-#
-# Everything lands in ONE folder, ISME_figs/, inside the working directory,
-# under the names the submission system expects: figN.pdf, .eps, .tiff, .png.
-# Nothing above this block was changed.
-#
-# type = "cairo" on the raster devices. THIS IS THE FIX FOR THE BROKEN TIFF.
-# ggsave() hands .tiff and .png to grDevices, which on Windows defaults to the
-# GDI device; that device gives up on very large rasters and writes a blank or
-# truncated file without erroring. Figure 2 is 16 x 14 in at 600 dpi = 9600 x
-# 8400 px, which is where it breaks. cairo has no such limit, and it
-# antialiases text the same way the PDF does.
-#
-# cairo_pdf, NOT pdf(): cairo EMBEDS the fonts, which is what the guideline
-# asks for. The base device only references them, and it would also fail to
-# render the bold / bold-italic mix in the bquote() titles.
-#
-# cairo_ps for EPS, NOT postscript(): the base one cannot embed fonts either.
-#
-# dpi is meaningless for PDF and EPS -- they have no pixels. Only width and
-# height in inches fix the printed size, and both are unchanged.
+# EXPORT - PDF, EPS, SVG, TIFF, and PNG inside ISME_figs/.
 # ---------------------------------------------------------------------------
 OUT <- file.path(getwd(), "ISME_figs")
 dir.create(OUT, showWarnings = FALSE)
@@ -363,27 +415,25 @@ export_isme <- function(plot, n, w, h) {
     stop("This R build has no cairo support. Fonts cannot be embedded and the\n",
          "  large rasters will fail. Reinstall R with cairo before exporting.")
   b <- file.path(OUT, paste0("fig", n))
+  svg_dev <- if (requireNamespace("svglite", quietly = TRUE)) svglite::svglite else svg
+  
   ggsave(paste0(b, ".pdf"),  plot, width = w, height = h,
          device = cairo_pdf, bg = "white")
   ggsave(paste0(b, ".eps"),  plot, width = w, height = h,
          device = cairo_ps, fallback_resolution = 600, bg = "white")
+  ggsave(paste0(b, ".svg"),  plot, width = w, height = h,
+         device = svg_dev, bg = "white")
   ggsave(paste0(b, ".tiff"), plot, width = w, height = h, dpi = 600,
          compression = "lzw", bg = "white", type = "cairo")
   ggsave(paste0(b, ".png"),  plot, width = w, height = h, dpi = 600,
          bg = "white", type = "cairo")
+  
   cat("\n  ---------- fig", n, " ----------\n", sep = "")
-  for (e in c(".pdf", ".eps", ".tiff", ".png"))
+  for (e in c(".pdf", ".eps", ".svg", ".tiff", ".png"))
     cat(sprintf("    fig%d%-5s %8.2f MB\n", n, e,
                 file.size(paste0(b, e)) / 1e6))
   cat("    folder: ", OUT, "\n", sep = "")
 }
-
-# WARNING, FIGURE 2 ONLY. Panels A and B use alpha = 0.5 in geom_boxplot().
-# EPS cannot carry transparency at all, so cairo_ps rasterises those two
-# boxplot areas at 600 dpi; the rest of the EPS stays vector. The PDF and the
-# TIFF are unaffected. Removing the alpha would make the EPS fully vector but
-# would change how the figure looks, so it is NOT done here. Submit the PDF or
-# the TIFF for this figure and the question does not arise.
 
 export_isme(final_plot, 2, 16, 14)
 
@@ -441,7 +491,7 @@ cat("CB22/GLI-assembled vOTUs seen in BOTH read pools: ",
     sum(det$Fraction %in% c("CB22", "GLI") & det$in_cb & det$in_gl), " of ",
     sum(det$Fraction %in% c("CB22", "GLI")), "\n", sep = "")
 
-rule("7) TOP TAXONOMY / HOST BY ORIGIN  (panels f, g)")
+rule("7) TOP TAXONOMY / HOST BY CULTURE DEPENDENCE  (panels g, h)")
 print(as.data.frame(df_tpm %>% filter(Viral_Fam != "Unclassified") %>%
                       group_by(World_Mapped, Viral_Fam) %>% summarise(TPM = sum(TPM), .groups="drop") %>%
                       arrange(World_Mapped, desc(TPM)) %>% group_by(World_Mapped) %>% slice_head(n = 3) %>%
@@ -451,4 +501,72 @@ print(as.data.frame(df_tpm %>% filter(Host_Class != "Unknown") %>%
                       arrange(World_Mapped, desc(TPM)) %>% group_by(World_Mapped) %>% slice_head(n = 3) %>%
                       mutate(Pct = round(100 * TPM / sum(TPM), 2))))
 
-cat("\nFig2: the four files are in ", OUT, "\n", sep = "")
+# =============================================================================
+# 11) HOST TAXONOMY AUDIT  (panel H)
+#
+#     GTDB R226 and NCBI do not use the same class names. Betaproteobacteria,
+#     Flavobacteriia, Cyanophyceae and Actinomycetes are NCBI classes that do
+#     not exist in GTDB; Cyanobacteriia and Actinomycetia are their GTDB
+#     counterparts, and GTDB places Flavobacteriales inside Bacteroidia.
+#
+#     If names from both schemes end up in the same column, one organism can
+#     be counted twice under two different class labels and the proportions in
+#     panel H are distorted. This block prints every class with its vOTU count
+#     and says which scheme the names belong to.
+# =============================================================================
+rule("8) HOST TAXONOMY AUDIT  (panel H)")
+
+cat("Host-related columns in the input table:\n  ")
+cat(paste(grep("host", names(votu_all), ignore.case = TRUE, value = TRUE),
+          collapse = ", "), "\n")
+
+host_tab <- votu %>%
+  filter(Host_Class != "Unknown") %>%
+  count(Host_Class, sort = TRUE) %>%
+  mutate(pct = round(100 * n / sum(n), 2))
+
+cat("\nEvery host class, with vOTU counts (not just the ten plotted):\n")
+print(as.data.frame(host_tab), row.names = FALSE)
+cat("\n  distinct classes: ", nrow(host_tab),
+    "  |  vOTUs with a class: ", sum(host_tab$n),
+    "  |  without: ", sum(votu$Host_Class == "Unknown"), "\n", sep = "")
+
+NCBI_ONLY <- c("Betaproteobacteria", "Deltaproteobacteria", "Epsilonproteobacteria",
+               "Flavobacteriia", "Cyanophyceae", "Actinobacteria", "Mollicutes",
+               "Sphingobacteriia", "Cytophagia", "Chitinophagia", "Saprospiria",
+               "Methanomicrobia", "Erysipelotrichia", "Thermoprotei")
+GTDB_ONLY <- c("Cyanobacteriia", "Actinomycetia", "Actinomycetes", "Campylobacteria",
+               "Bacilli_A", "Leptospirae", "Desulfobacteria", "Desulfuromonadia",
+               "Desulfotomaculia", "Thermoanaerobacteria", "Methanosarcinia",
+               "Alphaproteobacteria_A", "Gammaproteobacteria_A", "Vampirovibrionia")
+
+found_ncbi <- intersect(host_tab$Host_Class, NCBI_ONLY)
+found_gtdb <- intersect(host_tab$Host_Class, GTDB_ONLY)
+
+cat("\n  NCBI-only names found: ",
+    if (length(found_ncbi)) paste(found_ncbi, collapse = ", ") else "none", "\n",
+    "  GTDB-only names found: ",
+    if (length(found_gtdb)) paste(found_gtdb, collapse = ", ") else "none", "\n",
+    sep = "")
+
+if (length(found_ncbi) && length(found_gtdb)) {
+  cat("\n  >>> MIXED TAXONOMY STILL PRESENT after section 0b. Add the missing\n",
+      "      names to ORDER_TO_NCBI or GTDB_TO_NCBI and re-run.\n", sep = "")
+} else if (length(found_ncbi)) {
+  cat("\n  >>> Host classes look NCBI-based. Say so in the Fig. 2 legend.\n", sep = "")
+} else if (length(found_gtdb)) {
+  cat("\n  >>> Host classes look GTDB-based. Say so in the Fig. 2 legend.\n", sep = "")
+} else {
+  cat("\n  >>> No diagnostic name present. Inspect Host_Prediction by hand.\n", sep = "")
+}
+
+if (all(c("Bacteroidia", "Flavobacteriia") %in% host_tab$Host_Class)) {
+  cat("\n  WARNING: Bacteroidia and Flavobacteriia are both present. GTDB puts\n",
+      "  Flavobacteriales inside Bacteroidia, so these two bars are very likely\n",
+      "  the same organisms split across two taxonomies.\n", sep = "")
+}
+
+cat("\nFive raw Host_Prediction strings, to see the format:\n")
+print(head(unique(votu$Host_Prediction[votu$Host_Class != "Unknown"]), 5))
+
+cat("\nFig2: the five files are in ", OUT, "\n", sep = "")
