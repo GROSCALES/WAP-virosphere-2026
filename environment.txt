@@ -1,17 +1,33 @@
-External tools (not installed by requirements.txt).
-Versions used for the published analysis.
+EXTERNAL TOOLS
+Not installed by requirements.txt. Versions used for the published analysis.
 
-  Trimmomatic 0.40        VirSorter2 2.2.4
-  Bowtie2 2.5.4           CheckV 1.0.3
-  FastQC 0.12.1           MMseqs2 13
-  Porechop_ABI 0.5.0post1 PhaBOX 2.1.5
-  Filtlong 0.2.1          Cenote-Taker 3 3.4.3
-  metaSPAdes 3.15.5       VIBRANT 1.2.1
-  QUAST 5.0.2             Prodigal 2.6.3
-  MetaBAT2 2.12.1         PADLOC 2.0.0 (padloc-db 2.0.0)
-  CheckM 1.2.2            DefenseFinder 3.0.0 (MacSyFinder 2.1.4)
-  dRep 3.6.1              CoverM 0.6.1
-  GTDB-Tk 2.5.2 (R226)    vConTACT3 3.1.6 (INPHARED v230)
-  Bakta 1.11.4            PHASTEST (web service)
+  Trimmomatic 0.40          VirSorter2 2.2.4
+  Bowtie2 2.5.4             CheckV 1.0.3
+  FastQC 0.12.1             MMseqs2 13
+  Porechop_ABI 0.5.0post1   PhaBOX 2.1.5
+  Filtlong 0.2.1            Cenote-Taker 3 3.4.3
+  metaSPAdes 3.15.5         VIBRANT 1.2.1
+  QUAST 5.0.2               Prodigal 2.6.3
+  MetaBAT2 2.12.1           PADLOC 2.0.0 (padloc-db 2.0.0)
+  CheckM 1.2.2              DefenseFinder 3.0.0 (MacSyFinder 2.1.4)
+  dRep 3.6.1                CoverM 0.6.1
+  GTDB-Tk 2.5.2 (R226)      vConTACT3 3.1.6 (INPHARED v230)
+  Bakta 1.11.4              PHASTEST (web service)
 
-R 4.x: tidyverse, vegan, ggplot2, pheatmap, gggenes 0.4.1, ggupset
+
+R PACKAGES
+R 4.x. Used by the scripts in R/.
+
+  tidyverse (dplyr, ggplot2, tidyr, readr)
+  vegan              community statistics, PERMANOVA, Bray-Curtis
+  MASS               the models in 09_supplementary_statistics.R
+  cowplot            multi-panel assembly
+  scales             axis formatting
+  ggupset            the fraction-overlap panel of Figure 2
+  gggenes 0.4.1      the genome maps, Figures 4 to 6
+  pheatmap           supplementary heatmaps
+  readxl             only if Data S1-S3 are read as .xlsx rather than .tsv
+
+MASS and readxl are the two that a reader is most likely to need:
+09_supplementary_statistics.R is the only script that runs on the files
+distributed with the paper (Data S1, S2 and S3), without any of the raw inputs.
