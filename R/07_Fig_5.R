@@ -1,5 +1,5 @@
 # ==============================================================================
-# 08_Fig5.R — Figure 5. Co-resident prophages in a Vibrio diabolicus MAG.
+# 07_Fig5.R — Figure 5. Co-resident prophages in a Vibrio diabolicus MAG.
 # Successor of Fig5v3.R. Ready to run.
 #
 # CHANGES 23/9 (second pass: palette, type sizes, regulator)
@@ -117,7 +117,8 @@ VIEW_49 <- c(30000,  80000)
 #   #4daf4a  AMG carbohidratos (Fig 4)   vs  "Innate Immune System" (Fig 6)
 # Las case_when() de mas abajo siguen escribiendo los nombres antiguos:
 # relabel_map() los traduce.
-source("palette_maps.R")
+PALETTE <- "C:/Users/gasch/Documents/R/vOTUs-R-V2/palette_maps.R"
+source(PALETTE)
 categorias_globales <- MAP_CATEGORIES
 paleta_global       <- MAP_PALETTE
 
@@ -474,6 +475,6 @@ export_isme(figura_completa, 5, 16, 9.5)
 # Check this line against the figure already in your manuscript BEFORE you
 # upload anything.
 pal_tag <- if ("Structural and other phage genes" %in% names(MAP_PALETTE))
-             "NEW  (Structural and other phage genes / DGR retroelement)" else
-             "OLD  (Structural / viral assembly / Hypermutation (DGR))"
+  "NEW  (Structural and other phage genes / DGR retroelement)" else
+    "OLD  (Structural / viral assembly / Hypermutation (DGR))"
 cat("    palette loaded: ", pal_tag, "\n", sep = "")
