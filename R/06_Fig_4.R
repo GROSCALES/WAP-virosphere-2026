@@ -1,5 +1,5 @@
 # =============================================================================
-# 07_Fig4.R — Figure 4. Genome maps of three virulent Caudoviricetes.
+# 06_Fig4.R — Figure 4. Genome maps of three virulent Caudoviricetes.
 # Successor of 04_Fig_4_27_8.R. Ready to run.
 #
 # CHANGES 23/9
@@ -67,7 +67,8 @@ NAME_C <- "MCHA-MB-1-CB22_NODE_23"
 # ------------------------------------------------------------------------------
 # 2. PALETTE AND PARSER
 # ------------------------------------------------------------------------------
-source("palette_maps.R")
+PALETTE <- "C:/Users/gasch/Documents/R/vOTUs-R-V2/palette_maps.R"
+source(PALETTE)
 paleta_global <- MAP_PALETTE
 
 parse_gbk <- function(file) {
@@ -379,8 +380,8 @@ export_isme(figura_4_mapas, 4, 16, 13)
 # Check this line against the figure already in your manuscript BEFORE you
 # upload anything.
 pal_tag <- if ("Structural and other phage genes" %in% names(MAP_PALETTE))
-             "NEW  (Structural and other phage genes / DGR retroelement)" else
-             "OLD  (Structural / viral assembly / Hypermutation (DGR))"
+  "NEW  (Structural and other phage genes / DGR retroelement)" else
+    "OLD  (Structural / viral assembly / Hypermutation (DGR))"
 cat("    palette loaded: ", pal_tag, "\n", sep = "")
 
 # ------------------------------------------------------------------------------
